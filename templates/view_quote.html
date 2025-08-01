@@ -1,0 +1,293 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <h2>
+                <i class="fas fa-file-invoice-dollar text-primary"></i>
+                Cotización #{{ quote_id }}
+            </h2>
+            <div>
+                <span class="badge bg-success fs-6">{{ created_at.strftime('%d/%m/%Y') }}</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-user text-primary"></i>
+                    Información del Cliente
+                </h5>
+            </div>
+            <div class="card-body">
+                <h6 class="fw-bold">{{ client.name }}</h6>
+                {% if client.email %}
+                <p class="mb-1">
+                    <i class="fas fa-envelope text-muted"></i>
+                    {{ client.email }}
+                </p>
+                {% endif %}
+                {% if client.phone %}
+                <p class="mb-1">
+                    <i class="fas fa-phone text-muted"></i>
+                    {{ client.phone }}
+                </p>
+                {% endif %}
+                {% if client.address %}
+                <p class="mb-0">
+                    <i class="fas fa-map-marker-alt text-muted"></i>
+                    {{ client.address }}
+                </p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-calculator text-success"></i>
+                    Resumen Rápido
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-6">
+                        <h4 class="text-primary">{{ items|count }}</h4>
+                        <small class="text-muted">Ventanas</small>
+                    </div>
+                    <div class="col-6">
+                        <h4 class="text-success">${{ "%.2f"|format(total_final|float) }}</h4>
+                        <small class="text-muted">Total</small>
+                    </div>
+                </div>
+                <hr>
+                <div class="row text-center">
+                    <div class="col-4">
+                        <small class="text-muted">Área Total</small>
+                        {% set total_area = 0 %}
+                        {% for item in items %}
+                            {% set total_area = total_area + (item.area_m2|float) %}
+                        {% endfor %}
+                        <div class="fw-bold">{{ "%.2f"|format(total_area) }}m²</div>
+                    </div>
+                    <div class="col-4">
+                        <small class="text-muted">Perímetro</small>
+                        {% set total_perimeter = 0 %}
+                        {% for item in items %}
+                            {% set total_perimeter = total_perimeter + (item.perimeter_m|float) %}
+                        {% endfor %}
+                        <div class="fw-bold">{{ "%.2f"|format(total_perimeter) }}m</div>
+                    </div>
+                    <div class="col-4">
+                        <small class="text-muted">Validez</small>
+                        <div class="fw-bold">30 días</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-window-maximize text-info"></i>
+                    Detalle de Ventanas
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Ventana</th>
+                                <th>Especificaciones</th>
+                                <th class="text-center">Cantidad</th>
+                                <th class="text-center">Área</th>
+                                <th class="text-end">Costo</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in items %}
+                            <tr>
+                                <td>
+                                    <strong>{{ item.window_type|replace('_', ' ')|title }}</strong>
+                                    <br>
+                                    <small class="text-muted">{{ item.width_cm }}cm × {{ item.height_cm }}cm</small>
+                                    {% if item.description %}
+                                    <br>
+                                    <small class="text-primary">{{ item.description }}</small>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <small class="d-block">
+                                        <strong>Aluminio:</strong> {{ item.aluminum_line|replace('_', ' ')|title }}<br>
+                                        <strong>Vidrio:</strong> {{ item.glass_type|replace('_', ' ')|title }}
+                                    </small>
+                                </td>
+                                <td class="text-center">{{ item.quantity }}</td>
+                                <td class="text-center">{{ "%.2f"|format(item.area_m2|float) }} m²</td>
+                                <td class="text-end">${{ "%.2f"|format(item.subtotal|float) }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card border-success">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0">💰 Totales</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+    <div class="col-6 col-md-2 mb-3 mb-md-0">
+        <div class="text-center">
+            <h6>Materiales</h6>
+            <h4 class="text-primary">${{ "%.2f"|format(materials_subtotal|float) }}</h4>
+        </div>
+    </div>
+    <div class="col-6 col-md-2 mb-3 mb-md-0">
+        <div class="text-center">
+            <h6>Mano de Obra</h6>
+            <h4 class="text-info">${{ "%.2f"|format(labor_subtotal|float) }}</h4>
+        </div>
+    </div>
+    <div class="col-6 col-md-2 mb-3 mb-md-0">
+        <div class="text-center">
+            <h6>Gastos Indirectos</h6> {# Renamed from Gastos Generales for clarity #}
+            <h4 class="text-warning">${{ "%.2f"|format(indirect_costs_amount|float) }}</h4>
+        </div>
+    </div>
+    <div class="col-6 col-md-2 mb-3 mb-md-0">
+        <div class="text-center">
+            <h6>Utilidad</h6>
+            <h4 class="text-success">${{ "%.2f"|format(profit_amount|float) }}</h4>
+        </div>
+    </div>
+    <div class="col-6 col-md-2 mb-3 mb-md-0">
+        <div class="text-center">
+            <h6>IVA</h6>
+            <h4 class="text-danger">${{ "%.2f"|format(tax_amount|float) }}</h4>
+        </div>
+    </div>
+    <div class="col-6 col-md-2 mb-3 mb-md-0">
+        <div class="text-center">
+            <h6>TOTAL Final</h6> {# Renamed from TOTAL for clarity #}
+            <h3 class="text-success">${{ "%.2f"|format(total_final|float) }}</h3>
+        </div>
+    </div>
+</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if notes %}
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">📝 Notas</h5>
+            </div>
+            <div class="card-body">
+                <p class="mb-0">{{ notes }}</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<div class="row mt-4">
+    <div class="col-12 text-center">
+        <button class="btn btn-primary me-2" onclick="window.print()">
+            <i class="fas fa-print"></i> Imprimir
+        </button>
+        <button class="btn btn-success me-2" onclick="generatePDF()">
+            <i class="fas fa-file-pdf"></i> Generar PDF
+        </button>
+        <a href="/dashboard" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Volver al Dashboard
+        </a>
+    </div>
+</div>
+
+<script>
+async function generatePDF() {
+    try {
+        // Obtener el ID de la cotización desde la URL
+        const urlParts = window.location.pathname.split('/');
+        const quoteId = urlParts[urlParts.length - 1];
+        
+        // Mostrar mensaje de carga
+        const button = document.querySelector('button[onclick="generatePDF()"]');
+        const originalText = '<i class="fas fa-file-pdf"></i> Generar PDF';
+        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generando PDF...';
+        button.disabled = true;
+        
+        // Crear URL para descargar PDF
+        const pdfUrl = `/quotes/${quoteId}/pdf`;
+        
+        // Hacer la petición con fetch (incluye automáticamente las cookies)
+        const response = await fetch(pdfUrl, {
+            method: 'GET',
+            credentials: 'include' // Incluir cookies de autenticación
+        });
+        
+        if (response.ok) {
+            // Obtener el contenido del PDF
+            const blob = await response.blob();
+            
+            // Crear enlace temporal para descarga
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `cotizacion_${quoteId.padStart(5, '0')}.pdf`;
+            
+            // Simular click para iniciar descarga
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            // Limpiar el URL del blob
+            window.URL.revokeObjectURL(url);
+            
+            // Mostrar mensaje de éxito
+            showAlert('PDF generado exitosamente', 'success');
+        } else {
+            // Mostrar error
+            const errorText = await response.text();
+            console.error('Error generating PDF:', errorText);
+            showAlert('Error al generar PDF: ' + (response.status === 404 ? 'Cotización no encontrada' : 'Error del servidor'), 'danger');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        showAlert('Error de conexión al generar PDF', 'danger');
+    } finally {
+        // Restaurar el botón
+        const button = document.querySelector('button[onclick="generatePDF()"]');
+        if (button) {
+            button.innerHTML = originalText;
+            button.disabled = false;
+        }
+    }
+}
+</script>
+
+{% endblock %}

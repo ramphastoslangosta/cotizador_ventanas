@@ -1,0 +1,759 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Catálogo de Perfiles - Sistema de Cotización</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <style>
+        .profile-card {
+            transition: transform 0.2s ease;
+            border-left: 4px solid #3498db;
+        }
+        
+        .profile-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        
+        .product-header {
+            background: linear-gradient(135deg, #3498db, #2c3e50);
+            color: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .specs-table {
+            font-size: 0.9em;
+        }
+        
+        .cost-badge {
+            font-size: 1.1em;
+            font-weight: bold;
+        }
+        
+        .category-badge {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+        }
+        
+        .formula-code {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 4px;
+            padding: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85em;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark" style="background: linear-gradient(135deg, #3498db, #2c3e50);">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/dashboard">
+                <i class="bi bi-building"></i>
+                Sistema de Cotización
+            </a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link" href="/dashboard">
+                    <i class="bi bi-arrow-left"></i> Volver al Dashboard
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid py-4">
+        <div class="row">
+            <!-- Sidebar con navegación -->
+            <div class="col-md-3">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="bi bi-list-ul"></i>
+                            Navegación
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="list-group list-group-flush">
+                            <a href="#corrediza" class="list-group-item list-group-item-action">
+                                <i class="bi bi-arrows-move"></i> Corrediza 3"
+                            </a>
+                            <a href="#fija" class="list-group-item list-group-item-action">
+                                <i class="bi bi-square"></i> Fija 3"
+                            </a>
+                            <a href="#proyeccion" class="list-group-item list-group-item-action">
+                                <i class="bi bi-triangle"></i> Proyección Serie 35
+                            </a>
+                        </div>
+                        
+                        <hr>
+                        
+                        <h6>Calculadora Rápida</h6>
+                        <div class="mb-3">
+                            <label class="form-label">Tipo de Ventana</label>
+                            <select class="form-select" id="quickCalcType">
+                                <option value="CORREDIZA_3">Corrediza 3"</option>
+                                <option value="FIJO_3">Fija 3"</option>
+                                <option value="PROYECCION_35">Proyección 35</option>
+                            </select>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-6">
+                                <label class="form-label">Ancho (cm)</label>
+                                <input type="number" class="form-control" id="quickWidth" value="150">
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label">Alto (cm)</label>
+                                <input type="number" class="form-control" id="quickHeight" value="120">
+                            </div>
+                        </div>
+                        
+                        <div class="mt-3">
+                            <button class="btn btn-primary w-100" onclick="quickCalculate()">
+                                <i class="bi bi-calculator"></i> Calcular
+                            </button>
+                        </div>
+                        
+                        <div id="quickResult" class="mt-3"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Contenido principal -->
+            <div class="col-md-9">
+                <!-- Header -->
+                <div class="product-header">
+                    <h1>
+                        <i class="bi bi-gear-wide-connected"></i>
+                        Catálogo de Perfiles de Aluminio
+                    </h1>
+                    <p class="mb-0">Especificaciones técnicas y costos de perfiles para ventanas y puertas</p>
+                </div>
+
+                <!-- Corrediza 3 Pulgadas -->
+                <section id="corrediza" class="mb-5">
+                    <div class="card">
+                        <div class="card-header bg-primary text-white">
+                            <h3 class="mb-0">
+                                <i class="bi bi-arrows-move"></i>
+                                Sistema Corrediza 3 Pulgadas
+                            </h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="row mb-4">
+                                <div class="col-md-8">
+                                    <p class="lead">Sistema de ventana corrediza de 3 pulgadas, disponible en configuraciones de 2, 3 o 4 hojas.</p>
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <strong>Dimensiones permitidas:</strong>
+                                            <ul>
+                                                <li>Ancho: 100 - 300 cm</li>
+                                                <li>Alto: 60 - 250 cm</li>
+                                            </ul>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <strong>Configuraciones:</strong>
+                                            <ul>
+                                                <li>2 hojas corredizas</li>
+                                                <li>3 hojas corredizas</li>
+                                                <li>4 hojas corredizas</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="card bg-light">
+                                        <div class="card-body text-center">
+                                            <h5>Ejemplo de Costo</h5>
+                                            <p class="text-muted">Ventana 150x120cm, 2 hojas</p>
+                                            <h4 class="text-success" id="corrediza-example">$2,450.00</h4>
+                                            <small class="text-muted">Solo perfiles, acabado natural</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <h5>Perfiles Componentes:</h5>
+                            <div class="row" id="corrediza-profiles">
+                                <!-- Los perfiles se cargarán aquí dinámicamente -->
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Fija 3 Pulgadas -->
+                <section id="fija" class="mb-5">
+                    <div class="card">
+                        <div class="card-header bg-success text-white">
+                            <h3 class="mb-0">
+                                <i class="bi bi-square"></i>
+                                Sistema Fijo 3 Pulgadas
+                            </h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="row mb-4">
+                                <div class="col-md-8">
+                                    <p class="lead">Sistema de ventana fija de 3 pulgadas para iluminación natural.</p>
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <strong>Dimensiones permitidas:</strong>
+                                            <ul>
+                                                <li>Ancho: 50 - 200 cm</li>
+                                                <li>Alto: 50 - 150 cm</li>
+                                            </ul>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <strong>Características:</strong>
+                                            <ul>
+                                                <li>Marco perimetral escalonado</li>
+                                                <li>Sistema de sujeción de vidrio</li>
+                                                <li>Fácil instalación</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="card bg-light">
+                                        <div class="card-body text-center">
+                                            <h5>Ejemplo de Costo</h5>
+                                            <p class="text-muted">Ventana 100x80cm</p>
+                                            <h4 class="text-success" id="fija-example">$1,280.00</h4>
+                                            <small class="text-muted">Solo perfiles, acabado natural</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <h5>Perfiles Componentes:</h5>
+                            <div class="row" id="fija-profiles">
+                                <!-- Los perfiles se cargarán aquí dinámicamente -->
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Proyección Serie 35 -->
+                <section id="proyeccion" class="mb-5">
+                    <div class="card">
+                        <div class="card-header bg-warning text-dark">
+                            <h3 class="mb-0">
+                                <i class="bi bi-triangle"></i>
+                                Sistema Proyectante Serie 35
+                            </h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="row mb-4">
+                                <div class="col-md-8">
+                                    <p class="lead">Sistema de ventana proyectante serie 35 para ventilación controlada.</p>
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <strong>Dimensiones permitidas:</strong>
+                                            <ul>
+                                                <li>Ancho: 40 - 120 cm</li>
+                                                <li>Alto: 40 - 100 cm</li>
+                                            </ul>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <strong>Características:</strong>
+                                            <ul>
+                                                <li>Apertura hacia exterior</li>
+                                                <li>Control de ventilación</li>
+                                                <li>Herrajes especializados</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="card bg-light">
+                                        <div class="card-body text-center">
+                                            <h5>Ejemplo de Costo</h5>
+                                            <p class="text-muted">Ventana 80x60cm</p>
+                                            <h4 class="text-success" id="proyeccion-example">$890.00</h4>
+                                            <small class="text-muted">Solo perfiles, acabado natural</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <h5>Perfiles Componentes:</h5>
+                            <div class="row" id="proyeccion-profiles">
+                                <!-- Los perfiles se cargarán aquí dinámicamente -->
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Tabla comparativa -->
+                <section class="mb-5">
+                    <div class="card">
+                        <div class="card-header">
+                            <h4 class="mb-0">
+                                <i class="bi bi-table"></i>
+                                Comparativa de Sistemas
+                            </h4>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead class="table-dark">
+                                        <tr>
+                                            <th>Sistema</th>
+                                            <th>Ancho Min-Max</th>
+                                            <th>Alto Min-Max</th>
+                                            <th>Configuraciones</th>
+                                            <th>Costo Promedio/m²</th>
+                                            <th>Uso Recomendado</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td><strong>Corrediza 3"</strong></td>
+                                            <td>100 - 300 cm</td>
+                                            <td>60 - 250 cm</td>
+                                            <td>2, 3, 4 hojas</td>
+                                            <td class="text-success">$180 - $220/m²</td>
+                                            <td>Ventanas grandes, espacios abiertos</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Fija 3"</strong></td>
+                                            <td>50 - 200 cm</td>
+                                            <td>50 - 150 cm</td>
+                                            <td>Simple</td>
+                                            <td class="text-success">$160 - $190/m²</td>
+                                            <td>Iluminación, fachadas</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Proyección 35</strong></td>
+                                            <td>40 - 120 cm</td>
+                                            <td>40 - 100 cm</td>
+                                            <td>Simple</td>
+                                            <td class="text-success">$185 - $210/m²</td>
+                                            <td>Baños, cocinas, ventilación</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para detalles de perfil -->
+    <div class="modal fade" id="profileModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Detalles del Perfil</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="profileModalBody">
+                    <!-- Contenido dinámico -->
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                    <button type="button" class="btn btn-primary" onclick="addToQuote()">
+                        <i class="bi bi-plus-circle"></i> Agregar a Cotización
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Datos de perfiles (simulados - en producción vendrían del API)
+        const profilesData = {
+            'CORREDIZA_3': [
+                {
+                    code: '69957',
+                    name: 'Riel Corrediza 3"',
+                    description: 'Riel principal para sistema corredizo',
+                    width_mm: 76.0,
+                    height_mm: 25.5,
+                    cost_per_meter: 75.50,
+                    formula: 'width_m'
+                },
+                {
+                    code: '67835',
+                    name: 'Zócalo Ventana 3"',
+                    description: 'Zócalo lateral para ventanas',
+                    width_mm: 25.5,
+                    height_mm: 59.5,
+                    cost_per_meter: 52.80,
+                    formula: '2 * height_m'
+                },
+                {
+                    code: '67826',
+                    name: 'Chambrana 3"',
+                    description: 'Marco superior e inferior',
+                    width_mm: 76.0,
+                    height_mm: 32.0,
+                    cost_per_meter: 68.90,
+                    formula: '2 * width_m'
+                },
+                {
+                    code: '67847',
+                    name: 'Cerco Puerta 3"',
+                    description: 'Cerco de hojas móviles',
+                    width_mm: 51.2,
+                    height_mm: 35.0,
+                    cost_per_meter: 65.40,
+                    formula: 'num_hojas * 2 * (width_m/num_hojas + height_m)'
+                }
+            ],
+            'FIJO_3': [
+                {
+                    code: '39136',
+                    name: 'Escalonado Fijo 3"',
+                    description: 'Marco perimetral escalonado',
+                    width_mm: 76.2,
+                    height_mm: 44.5,
+                    cost_per_meter: 78.90,
+                    formula: '2 * (width_m + height_m)'
+                },
+                {
+                    code: '67315',
+                    name: 'Tapa Bolsa 3"',
+                    description: 'Tapa bolsa perimetral',
+                    width_mm: 72.4,
+                    height_mm: 20.1,
+                    cost_per_meter: 45.60,
+                    formula: '2 * (width_m + height_m)'
+                },
+                {
+                    code: '69114',
+                    name: 'Bolsa Lisa 3"',
+                    description: 'Bolsa para sujeción de vidrio',
+                    width_mm: 76.2,
+                    height_mm: 44.5,
+                    cost_per_meter: 58.70,
+                    formula: '2 * (width_m + height_m)'
+                },
+                {
+                    code: '91120',
+                    name: 'Junquillo 3"',
+                    description: 'Junquillo de sujeción',
+                    width_mm: 32.2,
+                    height_mm: 15.4,
+                    cost_per_meter: 28.90,
+                    formula: '2 * (width_m + height_m)'
+                }
+            ],
+            'PROYECCION_35': [
+                {
+                    code: '12273',
+                    name: 'Contramarco Proyección 35',
+                    description: 'Contramarco fijo perimetral',
+                    width_mm: 39.0,
+                    height_mm: 39.5,
+                    cost_per_meter: 68.40,
+                    formula: '2 * (width_m + height_m)'
+                },
+                {
+                    code: '12274',
+                    name: 'Marco Proyección 35',
+                    description: 'Marco móvil de la hoja',
+                    width_mm: 44.89,
+                    height_mm: 30.0,
+                    cost_per_meter: 72.80,
+                    formula: '2 * (width_m + height_m)'
+                },
+                {
+                    code: '12275',
+                    name: 'Intermedio Proyección 35',
+                    description: 'Intermedio para divisiones',
+                    width_mm: 59.3,
+                    height_mm: 39.0,
+                    cost_per_meter: 64.90,
+                    formula: '0'
+                }
+            ]
+        };
+
+        // Cargar perfiles al inicializar la página
+        document.addEventListener('DOMContentLoaded', function() {
+            loadProfiles();
+            calculateExamples();
+        });
+
+        function loadProfiles() {
+            // Cargar perfiles de cada sistema
+            Object.keys(profilesData).forEach(system => {
+                const container = document.getElementById(system.toLowerCase().replace('_', '-') + '-profiles');
+                if (container) {
+                    container.innerHTML = '';
+                    
+                    profilesData[system].forEach(profile => {
+                        const profileCard = createProfileCard(profile, system);
+                        container.appendChild(profileCard);
+                    });
+                }
+            });
+        }
+
+        function createProfileCard(profile, system) {
+            const col = document.createElement('div');
+            col.className = 'col-md-6 col-lg-4 mb-3';
+            
+            const categoryColors = {
+                'CORREDIZA_3': 'primary',
+                'FIJO_3': 'success',
+                'PROYECCION_35': 'warning'
+            };
+            
+            col.innerHTML = `
+                <div class="card profile-card h-100" style="position: relative;">
+                    <span class="badge bg-${categoryColors[system]} category-badge">${profile.code}</span>
+                    <div class="card-body">
+                        <h6 class="card-title">${profile.name}</h6>
+                        <p class="card-text text-muted small">${profile.description}</p>
+                        
+                        <div class="specs-table">
+                            <div class="row text-center mb-2">
+                                <div class="col-6">
+                                    <small class="text-muted">Ancho</small>
+                                    <div class="fw-bold">${profile.width_mm}mm</div>
+                                </div>
+                                <div class="col-6">
+                                    <small class="text-muted">Alto</small>
+                                    <div class="fw-bold">${profile.height_mm}mm</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="formula-code mb-2">
+                            <small>Cantidad: ${profile.formula}</small>
+                        </div>
+                        
+                        <div class="text-center">
+                            <span class="badge bg-success cost-badge">${profile.cost_per_meter.toFixed(2)}/m</span>
+                        </div>
+                    </div>
+                    <div class="card-footer">
+                        <button class="btn btn-outline-primary btn-sm w-100" onclick="showProfileDetails('${profile.code}', '${system}')">
+                            <i class="bi bi-info-circle"></i> Ver Detalles
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            return col;
+        }
+
+        function showProfileDetails(profileCode, system) {
+            const profile = profilesData[system].find(p => p.code === profileCode);
+            if (!profile) return;
+            
+            const modalBody = document.getElementById('profileModalBody');
+            modalBody.innerHTML = `
+                <div class="row">
+                    <div class="col-md-6">
+                        <h5>${profile.name}</h5>
+                        <p class="text-muted">${profile.description}</p>
+                        
+                        <h6>Especificaciones Técnicas:</h6>
+                        <table class="table table-sm">
+                            <tr>
+                                <td><strong>Código:</strong></td>
+                                <td>${profile.code}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Ancho:</strong></td>
+                                <td>${profile.width_mm} mm</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Alto:</strong></td>
+                                <td>${profile.height_mm} mm</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Costo por metro:</strong></td>
+                                <td class="text-success fw-bold">${profile.cost_per_meter.toFixed(2)}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Fórmula de cantidad:</strong></td>
+                                <td><code>${profile.formula}</code></td>
+                            </tr>
+                        </table>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Acabados Disponibles:</h6>
+                        <div class="row">
+                            <div class="col-6 mb-2">
+                                <span class="badge" style="background-color: #708090;">Gris Titanium</span>
+                            </div>
+                            <div class="col-6 mb-2">
+                                <span class="badge" style="background-color: #8B4513; color: white;">Madera Texturizado</span>
+                            </div>
+                            <div class="col-6 mb-2">
+                                <span class="badge" style="background-color: #2F4F4F; color: white;">Nedekor Mate</span>
+                            </div>
+                            <div class="col-6 mb-2">
+                                <span class="badge" style="background-color: #FFFFFF; color: black; border: 1px solid #ccc;">Blanco</span>
+                            </div>
+                            <div class="col-6 mb-2">
+                                <span class="badge" style="background-color: #F7E7CE;">Champagne</span>
+                            </div>
+                            <div class="col-6 mb-2">
+                                <span class="badge" style="background-color: #C0C0C0;">Natural</span>
+                            </div>
+                        </div>
+                        
+                        <h6 class="mt-3">Calculadora de Ejemplo:</h6>
+                        <div class="mb-2">
+                            <label class="form-label">Ancho (m):</label>
+                            <input type="number" class="form-control" id="exampleWidth" value="1.5" step="0.1">
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label">Alto (m):</label>
+                            <input type="number" class="form-control" id="exampleHeight" value="1.2" step="0.1">
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label">Num. Hojas:</label>
+                            <input type="number" class="form-control" id="exampleHojas" value="2" min="1" max="4">
+                        </div>
+                        <button class="btn btn-info w-100" onclick="calculateExample('${profile.code}', '${system}')">
+                            Calcular Cantidad
+                        </button>
+                        <div id="exampleResult" class="mt-2"></div>
+                    </div>
+                </div>
+            `;
+            
+            new bootstrap.Modal(document.getElementById('profileModal')).show();
+        }
+
+        function calculateExample(profileCode, system) {
+            const profile = profilesData[system].find(p => p.code === profileCode);
+            const width_m = parseFloat(document.getElementById('exampleWidth').value);
+            const height_m = parseFloat(document.getElementById('exampleHeight').value);
+            const num_hojas = parseInt(document.getElementById('exampleHojas').value);
+            
+            try {
+                // Evaluar la fórmula
+                const quantity = eval(profile.formula.replace(/width_m/g, width_m).replace(/height_m/g, height_m).replace(/num_hojas/g, num_hojas));
+                const cost = quantity * profile.cost_per_meter;
+                
+                document.getElementById('exampleResult').innerHTML = `
+                    <div class="alert alert-info">
+                        <strong>Resultado:</strong><br>
+                        Cantidad: ${quantity.toFixed(2)} metros<br>
+                        Costo: ${cost.toFixed(2)}
+                    </div>
+                `;
+            } catch (e) {
+                document.getElementById('exampleResult').innerHTML = `
+                    <div class="alert alert-warning">
+                        Error en el cálculo: ${e.message}
+                    </div>
+                `;
+            }
+        }
+
+        function quickCalculate() {
+            const type = document.getElementById('quickCalcType').value;
+            const width = parseFloat(document.getElementById('quickWidth').value) / 100; // Convertir a metros
+            const height = parseFloat(document.getElementById('quickHeight').value) / 100;
+            
+            let totalCost = 0;
+            let breakdown = [];
+            
+            const profiles = profilesData[type];
+            
+            profiles.forEach(profile => {
+                try {
+                    const num_hojas = type === 'CORREDIZA_3' ? (width * 100 > 200 ? 3 : 2) : 1;
+                    const quantity = eval(profile.formula.replace(/width_m/g, width).replace(/height_m/g, height).replace(/num_hojas/g, num_hojas));
+                    const cost = quantity * profile.cost_per_meter * 1.05; // Factor de desperdicio
+                    
+                    if (quantity > 0) {
+                        totalCost += cost;
+                        breakdown.push({
+                            name: profile.name,
+                            quantity: quantity.toFixed(2),
+                            cost: cost.toFixed(2)
+                        });
+                    }
+                } catch (e) {
+                    console.error('Error calculando', profile.code, e);
+                }
+            });
+            
+            const resultDiv = document.getElementById('quickResult');
+            resultDiv.innerHTML = `
+                <div class="card bg-light">
+                    <div class="card-body">
+                        <h6>Costo Estimado:</h6>
+                        <h4 class="text-success">${totalCost.toFixed(2)}</h4>
+                        <small class="text-muted">Solo perfiles + 5% desperdicio</small>
+                        <hr>
+                        <details>
+                            <summary>Ver desglose</summary>
+                            <div class="mt-2">
+                                ${breakdown.map(item => `
+                                    <div class="d-flex justify-content-between">
+                                        <small>${item.name}</small>
+                                        <small>${item.cost}</small>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </details>
+                    </div>
+                </div>
+            `;
+        }
+
+        function calculateExamples() {
+            // Calcular ejemplos para cada sistema
+            calculateSystemExample('CORREDIZA_3', 1.5, 1.2, 'corrediza-example');
+            calculateSystemExample('FIJO_3', 1.0, 0.8, 'fija-example');
+            calculateSystemExample('PROYECCION_35', 0.8, 0.6, 'proyeccion-example');
+        }
+
+        function calculateSystemExample(type, width_m, height_m, elementId) {
+            let totalCost = 0;
+            const profiles = profilesData[type];
+            
+            profiles.forEach(profile => {
+                try {
+                    const num_hojas = type === 'CORREDIZA_3' ? 2 : 1;
+                    const quantity = eval(profile.formula.replace(/width_m/g, width_m).replace(/height_m/g, height_m).replace(/num_hojas/g, num_hojas));
+                    const cost = quantity * profile.cost_per_meter * 1.05;
+                    
+                    if (quantity > 0) {
+                        totalCost += cost;
+                    }
+                } catch (e) {
+                    console.error('Error calculando ejemplo', profile.code, e);
+                }
+            });
+            
+            document.getElementById(elementId).textContent = `${totalCost.toFixed(2)}`;
+        }
+
+        function addToQuote() {
+            alert('Funcionalidad de agregar a cotización en desarrollo...');
+            bootstrap.Modal.getInstance(document.getElementById('profileModal')).hide();
+        }
+
+        // Smooth scrolling para navegación
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+    </script>
+</body>
+</html>

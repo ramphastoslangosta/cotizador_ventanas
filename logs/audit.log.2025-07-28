@@ -1,0 +1,1 @@
+{"timestamp": "2025-07-30T10:18:29.371642", "level": "INFO", "logger": "audit", "message": "AUDIT system_shutdown on application: success", "module": "logging_config", "function": "audit_event", "line": 289, "user_id": null}

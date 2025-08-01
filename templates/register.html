@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+
+{% block title %}Crear Cuenta - {{ super() }}{% endblock %}
+
+{% block public_content %}
+<div class="login-container d-flex align-items-center justify-content-center">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-6 col-lg-5">
+                <div class="card login-card">
+                    <div class="card-body p-5">
+                        <div class="text-center mb-4">
+                            <i class="bi bi-person-plus text-success" style="font-size: 3rem;"></i>
+                            <h2 class="mt-3 text-success">Crear Cuenta</h2>
+                            <p class="text-muted">Únete al sistema de cotización</p>
+                        </div>
+
+                        {% if error %}
+                        <div class="alert alert-danger" role="alert">
+                            <i class="bi bi-exclamation-triangle"></i>
+                            {{ error }}
+                        </div>
+                        {% endif %}
+
+                        <form method="post" action="/web/register" id="registerForm">
+                            <div class="mb-3">
+                                <label for="full_name" class="form-label">
+                                    <i class="bi bi-person"></i> Nombre Completo
+                                </label>
+                                <input type="text" class="form-control" id="full_name" name="full_name" required 
+                                       placeholder="Tu nombre completo">
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="email" class="form-label">
+                                    <i class="bi bi-envelope"></i> Email
+                                </label>
+                                <input type="email" class="form-control" id="email" name="email" required 
+                                       placeholder="tu@email.com">
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="password" class="form-label">
+                                    <i class="bi bi-lock"></i> Contraseña
+                                </label>
+                                <input type="password" class="form-control" id="password" name="password" required 
+                                       placeholder="Mínimo 6 caracteres" minlength="6">
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="confirm_password" class="form-label">
+                                    <i class="bi bi-lock-fill"></i> Confirmar Contraseña
+                                </label>
+                                <input type="password" class="form-control" id="confirm_password" name="confirm_password" 
+                                       required placeholder="Repite tu contraseña">
+                                <div class="invalid-feedback" id="password-error">
+                                    Las contraseñas no coinciden
+                                </div>
+                            </div>
+
+                            <div class="form-check mb-3">
+                                <input class="form-check-input" type="checkbox" id="terms" required>
+                                <label class="form-check-label" for="terms">
+                                    <small>Acepto los términos y condiciones del servicio</small>
+                                </label>
+                            </div>
+
+                            <div class="d-grid">
+                                <button type="submit" class="btn btn-success btn-lg" id="submitBtn">
+                                    <i class="bi bi-person-check"></i>
+                                    Crear Cuenta
+                                </button>
+                            </div>
+                        </form>
+
+                        <hr class="my-4">
+
+                        <div class="text-center">
+                            <p class="text-muted">¿Ya tienes cuenta?</p>
+                            <a href="/login" class="btn btn-outline-primary">
+                                <i class="bi bi-box-arrow-in-right"></i>
+                                Iniciar Sesión
+                            </a>
+                        </div>
+
+                        <!-- Benefits info -->
+                        <div class="mt-4 p-3 bg-light rounded">
+                            <h6 class="text-muted mb-2">
+                                <i class="bi bi-star"></i> ¿Por qué crear cuenta?
+                            </h6>
+                            <ul class="small text-muted mb-0">
+                                <li>Guarda tus cotizaciones</li>
+                                <li>Accede desde cualquier dispositivo</li>
+                                <li>Reportes y estadísticas</li>
+                                <li>Exporta a PDF profesional</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('registerForm');
+    const password = document.getElementById('password');
+    const confirmPassword = document.getElementById('confirm_password');
+    const submitBtn = document.getElementById('submitBtn');
+
+    function validatePasswords() {
+        const isValid = password.value === confirmPassword.value && password.value.length >= 6;
+        
+        if (confirmPassword.value && password.value !== confirmPassword.value) {
+            confirmPassword.classList.add('is-invalid');
+        } else {
+            confirmPassword.classList.remove('is-invalid');
+        }
+        
+        submitBtn.disabled = !isValid;
+        return isValid;
+    }
+
+    password.addEventListener('input', validatePasswords);
+    confirmPassword.addEventListener('input', validatePasswords);
+
+    form.addEventListener('submit', function(e) {
+        if (!validatePasswords()) {
+            e.preventDefault();
+            alert('Por favor, verifica que las contraseñas coincidan y tengan al menos 6 caracteres.');
+        }
+    });
+});
+</script>
+{% endblock %}

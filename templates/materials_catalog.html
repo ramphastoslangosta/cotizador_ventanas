@@ -1,0 +1,994 @@
+{% extends "base.html" %}
+
+{% block title %}Catálogo de Materiales (BOM) - {{ super() }}{% endblock %}
+
+{% block content %}
+<div id="alert-container"></div>
+
+<!-- Header -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h1 class="h3 text-primary">
+                    <i class="fas fa-boxes"></i>
+                    Catálogo de Materiales (BOM)
+                </h1>
+                <p class="text-muted">Gestiona los materiales que componen tus productos (perfiles, vidrios, herrajes, etc.)</p>
+            </div>
+            <div>
+                <div class="btn-group me-2">
+                    <button class="btn btn-success" onclick="openNewMaterialModal()">
+                        <i class="fas fa-plus-circle"></i>
+                        Nuevo Material
+                    </button>
+                    <button type="button" class="btn btn-success dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown">
+                        <span class="visually-hidden">Toggle Dropdown</span>
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li><h6 class="dropdown-header">CSV Operations</h6></li>
+                        <li><a class="dropdown-item" href="#" onclick="downloadCsvTemplate()">
+                            <i class="fas fa-download me-2"></i>Descargar Plantilla CSV
+                        </a></li>
+                        <li><a class="dropdown-item" href="#" onclick="exportMaterialsCsv()">
+                            <i class="fas fa-file-export me-2"></i>Exportar a CSV
+                        </a></li>
+                        <li><a class="dropdown-item" href="#" onclick="openImportCsvModal()">
+                            <i class="fas fa-file-import me-2"></i>Importar desde CSV
+                        </a></li>
+                    </ul>
+                </div>
+                <a href="/dashboard" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left"></i>
+                    Volver al Dashboard
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Stats Cards -->
+<div class="row mb-4">
+    <div class="col-md-3 mb-3">
+        <div class="card stat-card">
+            <div class="card-body text-center">
+                <i class="fas fa-box text-primary" style="font-size: 2rem;"></i>
+                <h4 class="mt-2 text-primary" id="totalMaterialsCount">0</h4>
+                <small class="text-muted">Total Materiales</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-9">
+        <div class="card">
+            <div class="card-body">
+                <h5>Resumen del Catálogo</h5>
+                <p class="text-muted">Define los costos base de cada componente para tus productos terminados.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Category Filters -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <h6 class="card-title">Filtrar por Categoría</h6>
+                <div class="btn-group" role="group" id="categoryFilters">
+                    <button type="button" class="btn btn-outline-primary active" data-category="all">
+                        Todas
+                    </button>
+                    <button type="button" class="btn btn-outline-primary" data-category="Perfiles">
+                        Perfiles
+                    </button>
+                    <button type="button" class="btn btn-outline-primary" data-category="Vidrio">
+                        Vidrio
+                    </button>
+                    <button type="button" class="btn btn-outline-primary" data-category="Herrajes">
+                        Herrajes
+                    </button>
+                    <button type="button" class="btn btn-outline-primary" data-category="Consumibles">
+                        Consumibles
+                    </button>
+                    <button type="button" class="btn btn-outline-primary" data-category="Otros">
+                        Otros
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Materials List -->
+<div id="materialsContainer">
+    <!-- Materiales se cargarán dinámicamente aquí -->
+    <div class="col-12 text-center py-5" id="loadingMaterials">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Cargando materiales...</span>
+        </div>
+        <p class="text-muted mt-2">Cargando materiales...</p>
+    </div>
+</div>
+
+<!-- Modal para Agregar/Editar Material -->
+<div class="modal fade" id="addMaterialModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="materialModalTitle">
+                    <i class="fas fa-plus-circle"></i>
+                    Nuevo Material
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="materialForm">
+                    <input type="hidden" id="materialId">
+                    
+                    <div class="mb-3">
+                        <label for="materialName" class="form-label">Nombre del Material *</label>
+                        <input type="text" class="form-control" id="materialName" required 
+                               placeholder="Ej: Perfil L. Nacional 3' Riel Sup.">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="materialCode" class="form-label">Código del Producto</label>
+                        <input type="text" class="form-control" id="materialCode" 
+                               placeholder="Ej: ALU-PER-NAC3-001" maxlength="50">
+                        <div class="form-text">
+                            Código estándar de la industria. Opcional pero recomendado para estandarización.
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="materialCategory" class="form-label">Categoría *</label>
+                        <select class="form-select" id="materialCategory" required>
+                            <option value="">Seleccionar categoría...</option>
+                            <option value="Perfiles">Perfiles</option>
+                            <option value="Vidrio">Vidrio</option>
+                            <option value="Herrajes">Herrajes</option>
+                            <option value="Consumibles">Consumibles</option>
+                            <option value="Otros">Otros</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="materialUnit" class="form-label">Unidad de Medida *</label>
+                        <select class="form-select" id="materialUnit" required>
+                            <option value="">Seleccionar unidad...</option>
+                            <option value="ML">ML (Metro Lineal)</option>
+                            <option value="PZA">PZA (Pieza)</option>
+                            <option value="M2">M2 (Metro Cuadrado)</option>
+                            <option value="CARTUCHO">Cartucho</option>
+                            <option value="LTS">LTS (Litros)</option>
+                            <option value="KG">KG (Kilogramo)</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="costPerUnit" class="form-label">Costo por Unidad *</label>
+                        <div class="input-group">
+                            <span class="input-group-text">$</span>
+                            <input type="number" class="form-control" id="costPerUnit" 
+                                   step="0.01" min="0" required placeholder="0.00">
+                            <span class="input-group-text">MXN</span>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="sellingUnitLengthM" class="form-label">Longitud Unidad de Venta (m)</label>
+                        <input type="number" class="form-control" id="sellingUnitLengthM" 
+                               step="0.01" min="0" placeholder="Ej: 6.0 (para perfiles)">
+                        <div class="form-text">
+                            Solo para materiales que se compran en longitudes fijas (ej. perfiles de 6 metros).
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="materialDescription" class="form-label">Descripción (opcional)</label>
+                        <textarea class="form-control" id="materialDescription" rows="2" placeholder="Detalles adicionales del material"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-success" onclick="saveMaterial()">
+                    <i class="fas fa-save"></i>
+                    Guardar Material
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Confirmación -->
+<div class="modal fade" id="confirmModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-exclamation-triangle text-warning"></i>
+                    Confirmar Acción
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p id="confirmMessage">¿Estás seguro de realizar esta acción?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-danger" id="confirmAction">
+                    Confirmar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para Gestión de Colores -->
+<div class="modal fade" id="colorsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="colorsModalTitle">
+                    <i class="fas fa-palette"></i>
+                    Gestionar Colores
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Agregar Nuevo Color</h6>
+                        <form id="colorForm">
+                            <div class="mb-3">
+                                <label for="colorName" class="form-label">Nombre del Color *</label>
+                                <input type="text" class="form-control" id="colorName" required 
+                                       placeholder="Ej: Bronce, Champagne">
+                            </div>
+                            <div class="mb-3">
+                                <label for="colorPrice" class="form-label">Precio por Unidad *</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">$</span>
+                                    <input type="number" class="form-control" id="colorPrice" 
+                                           step="0.01" min="0" required placeholder="0.00">
+                                </div>
+                            </div>
+                            <button type="button" class="btn btn-success" onclick="addMaterialColor()">
+                                <i class="fas fa-plus"></i>
+                                Agregar Color
+                            </button>
+                        </form>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Colores Existentes</h6>
+                        <div id="materialColorsContainer">
+                            <!-- Lista de colores del material -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let allMaterialsData = {};
+let allColors = [];
+let selectedCategory = 'all';
+let editingMaterialId = null;
+let currentMaterialForColors = null;
+
+document.addEventListener('DOMContentLoaded', function() {
+    initializeCategoryFilters();
+    fetchMaterialsByCategory();
+    fetchColors();
+});
+
+function initializeCategoryFilters() {
+    const categoryButtons = document.querySelectorAll('#categoryFilters button');
+    categoryButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            // Remover active de todos los botones
+            categoryButtons.forEach(btn => btn.classList.remove('active'));
+            // Agregar active al botón clickeado
+            this.classList.add('active');
+            
+            selectedCategory = this.getAttribute('data-category');
+            renderMaterials();
+        });
+    });
+}
+
+async function fetchMaterialsByCategory() {
+    document.getElementById('loadingMaterials').style.display = 'block';
+    try {
+        // Intentar primero el endpoint de categorías
+        let response = await fetch('/api/materials/by-category', {
+            method: 'GET',
+            credentials: 'include'
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            allMaterialsData = data.categories;
+            renderMaterials();
+        } else if (response.status === 405 || response.status === 500) {
+            // Fallback al endpoint antiguo si el de categorías falla
+            console.warn('Endpoint de categorías no disponible, usando fallback...');
+            await fetchMaterialsLegacy();
+        } else {
+            const error = await response.json();
+            showAlert('Error al cargar materiales: ' + (error.detail || 'Error desconocido'), 'danger');
+        }
+    } catch (error) {
+        console.warn('Error con endpoint de categorías, intentando fallback...', error);
+        await fetchMaterialsLegacy();
+    } finally {
+        document.getElementById('loadingMaterials').style.display = 'none';
+    }
+}
+
+async function fetchMaterialsLegacy() {
+    try {
+        const response = await fetch('/api/materials', {
+            method: 'GET',
+            credentials: 'include'
+        });
+        if (response.ok) {
+            const materials = await response.json();
+            
+            // Organizar materiales en categorías manualmente
+            const categorizedMaterials = {
+                'Otros': materials.map(m => ({
+                    ...m,
+                    category: 'Otros',
+                    cost_per_unit: parseFloat(m.cost_per_unit),
+                    selling_unit_length_m: m.selling_unit_length_m ? parseFloat(m.selling_unit_length_m) : null,
+                    colors: [],
+                    has_colors: false
+                }))
+            };
+            
+            allMaterialsData = categorizedMaterials;
+            renderMaterials();
+        } else {
+            const error = await response.json();
+            showAlert('Error al cargar materiales: ' + (error.detail || 'Error desconocido'), 'danger');
+        }
+    } catch (error) {
+        showAlert('Error de conexión al cargar materiales: ' + error.message, 'danger');
+    }
+}
+
+async function fetchColors() {
+    try {
+        const response = await fetch('/api/colors', {
+            method: 'GET',
+            credentials: 'include'
+        });
+        if (response.ok) {
+            allColors = await response.json();
+        }
+    } catch (error) {
+        console.error('Error cargando colores:', error);
+    }
+}
+
+function renderMaterials() {
+    const container = document.getElementById('materialsContainer');
+    container.innerHTML = ''; // Limpiar antes de renderizar
+
+    // Obtener materiales a mostrar según categoría seleccionada
+    let materialsToShow = [];
+    let totalMaterials = 0;
+    
+    if (selectedCategory === 'all') {
+        // Mostrar todas las categorías
+        Object.keys(allMaterialsData).forEach(category => {
+            totalMaterials += allMaterialsData[category].length;
+            materialsToShow.push({
+                categoryName: category,
+                materials: allMaterialsData[category]
+            });
+        });
+    } else {
+        // Mostrar solo la categoría seleccionada
+        if (allMaterialsData[selectedCategory]) {
+            totalMaterials = allMaterialsData[selectedCategory].length;
+            materialsToShow.push({
+                categoryName: selectedCategory,
+                materials: allMaterialsData[selectedCategory]
+            });
+        }
+    }
+
+    if (totalMaterials === 0) {
+        container.innerHTML = `
+            <div class="col-12 text-center py-5">
+                <i class="fas fa-box-open fa-5x text-muted mb-4"></i>
+                <h4 class="text-muted">No hay materiales registrados</h4>
+                <p class="text-muted">Añade tu primer material para empezar.</p>
+            </div>
+        `;
+    } else {
+        // Renderizar por categorías
+        materialsToShow.forEach(categoryData => {
+            if (categoryData.materials.length > 0) {
+                // Crear encabezado de categoría
+                const categoryHeader = document.createElement('div');
+                categoryHeader.className = 'col-12 mb-3';
+                categoryHeader.innerHTML = `
+                    <div class="d-flex align-items-center">
+                        <h5 class="text-primary mb-0">
+                            <i class="fas fa-folder"></i>
+                            ${categoryData.categoryName}
+                        </h5>
+                        <span class="badge bg-primary ms-2">${categoryData.materials.length}</span>
+                    </div>
+                    <hr class="mt-2 mb-0">
+                `;
+                container.appendChild(categoryHeader);
+
+                // Crear fila para los materiales de esta categoría
+                const categoryRow = document.createElement('div');
+                categoryRow.className = 'row mb-4';
+                
+                categoryData.materials.forEach(material => {
+                    const col = document.createElement('div');
+                    col.className = 'col-lg-4 col-md-6 mb-3';
+                    
+                    // Renderizar colores si los tiene
+                    let colorsHtml = '';
+                    if (material.has_colors && material.colors.length > 0) {
+                        colorsHtml = `
+                            <div class="mt-2">
+                                <small class="text-muted d-block">Colores y precios:</small>
+                                <div class="mt-1">
+                                    ${material.colors.map(color => `
+                                        <div class="d-flex justify-content-between align-items-center py-1 border-bottom border-light">
+                                            <small class="text-dark fw-bold">${color.color_name}</small>
+                                            <small class="text-success fw-bold">$${parseFloat(color.price_per_unit).toFixed(2)}</small>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        `;
+                    }
+                    
+                    col.innerHTML = `
+                        <div class="card h-100">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <div class="flex-grow-1">
+                                    <h6 class="mb-0" title="${material.name}">${material.name}</h6>
+                                    ${material.code ? `<small class="text-primary fw-bold">${material.code}</small>` : ''}
+                                </div>
+                                <span class="badge bg-primary">${material.unit}</span>
+                            </div>
+                            <div class="card-body">
+                                <div class="text-center">
+                                    ${material.has_colors ? 
+                                        (() => {
+                                            const prices = material.colors.map(c => parseFloat(c.price_per_unit));
+                                            const minPrice = Math.min(...prices);
+                                            const maxPrice = Math.max(...prices);
+                                            return minPrice === maxPrice ? 
+                                                `<div class="h5 text-success">$${minPrice.toFixed(2)}</div>` :
+                                                `<div class="h6 text-info">$${minPrice.toFixed(2)} - $${maxPrice.toFixed(2)}</div>`;
+                                        })() :
+                                        `<div class="h4 text-success">$${material.cost_per_unit.toFixed(2)}</div>`
+                                    }
+                                    <small class="text-muted">por ${material.unit}</small>
+                                </div>
+                                ${material.selling_unit_length_m ? `<p class="text-muted small mb-1">Venta: ${material.selling_unit_length_m} m</p>` : ''}
+                                ${material.description ? `<p class="text-muted small mb-1">${material.description}</p>` : ''}
+                                ${colorsHtml}
+                                <div class="mt-2">
+                                    ${material.code ? `<small class="text-primary fw-bold">Código: ${material.code}</small><br>` : ''}
+                                    <small class="text-muted">ID: #${material.id}</small>
+                                </div>
+                            </div>
+                            <div class="card-footer bg-transparent">
+                                <div class="btn-group w-100" role="group">
+                                    <button class="btn btn-outline-primary btn-sm" onclick="editMaterial(${material.id})" title="Editar">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    ${material.category === 'Perfiles' ? `
+                                        <button class="btn btn-outline-info btn-sm" onclick="manageColors(${material.id})" title="Gestionar Colores">
+                                            <i class="fas fa-palette"></i>
+                                        </button>
+                                    ` : ''}
+                                    <button class="btn btn-outline-danger btn-sm" onclick="confirmDeleteMaterial(${material.id})" title="Eliminar">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    categoryRow.appendChild(col);
+                });
+                
+                container.appendChild(categoryRow);
+            }
+        });
+    }
+    
+    document.getElementById('totalMaterialsCount').textContent = totalMaterials;
+}
+
+function openNewMaterialModal() {
+    resetMaterialModal();
+    new bootstrap.Modal(document.getElementById('addMaterialModal')).show();
+}
+
+function resetMaterialModal() {
+    document.getElementById('materialForm').reset();
+    document.getElementById('materialId').value = '';
+    document.getElementById('materialModalTitle').innerHTML = '<i class="fas fa-plus-circle"></i> Nuevo Material';
+    editingMaterialId = null;
+}
+
+function editMaterial(id) {
+    // Buscar el material en todas las categorías
+    let material = null;
+    Object.keys(allMaterialsData).forEach(category => {
+        const found = allMaterialsData[category].find(m => m.id === id);
+        if (found) material = found;
+    });
+    
+    if (!material) return;
+
+    editingMaterialId = id;
+    
+    document.getElementById('materialModalTitle').innerHTML = '<i class="fas fa-edit"></i> Editar Material';
+    document.getElementById('materialId').value = material.id;
+    document.getElementById('materialName').value = material.name;
+    document.getElementById('materialCode').value = material.code || '';
+    document.getElementById('materialCategory').value = material.category;
+    document.getElementById('materialUnit').value = material.unit;
+    document.getElementById('costPerUnit').value = material.cost_per_unit;
+    document.getElementById('sellingUnitLengthM').value = material.selling_unit_length_m || '';
+    document.getElementById('materialDescription').value = material.description || '';
+
+    new bootstrap.Modal(document.getElementById('addMaterialModal')).show();
+}
+
+async function saveMaterial() {
+    const form = document.getElementById('materialForm');
+    if (!form.checkValidity()) {
+        form.reportValidity();
+        return;
+    }
+
+    const sellingUnitLengthMValue = document.getElementById('sellingUnitLengthM').value;
+    const materialData = {
+        name: document.getElementById('materialName').value,
+        code: document.getElementById('materialCode').value || null,
+        category: document.getElementById('materialCategory').value,
+        unit: document.getElementById('materialUnit').value,
+        cost_per_unit: parseFloat(document.getElementById('costPerUnit').value),
+        selling_unit_length_m: sellingUnitLengthMValue ? parseFloat(sellingUnitLengthMValue) : null,
+        description: document.getElementById('materialDescription').value || null
+    };
+
+    try {
+        let response;
+        
+        if (editingMaterialId) {
+            response = await fetch(`/api/materials/${editingMaterialId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                credentials: 'include',
+                body: JSON.stringify(materialData)
+            });
+        } else {
+            response = await fetch('/api/materials', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                credentials: 'include',
+                body: JSON.stringify(materialData)
+            });
+        }
+
+        if (response.ok) {
+            showAlert(editingMaterialId ? 'Material actualizado exitosamente' : 'Material creado exitosamente', 'success');
+            bootstrap.Modal.getInstance(document.getElementById('addMaterialModal')).hide();
+            fetchMaterialsByCategory(); // Recargar la lista de materiales por categoría
+        } else {
+            const error = await response.json();
+            showAlert('Error: ' + (error.detail || 'Error desconocido'), 'danger');
+        }
+    } catch (error) {
+        showAlert('Error de conexión: ' + error.message, 'danger');
+    }
+}
+
+function confirmDeleteMaterial(id) {
+    // Buscar el material en todas las categorías
+    let material = null;
+    Object.keys(allMaterialsData).forEach(category => {
+        const found = allMaterialsData[category].find(m => m.id === id);
+        if (found) material = found;
+    });
+    
+    if (!material) return;
+
+    document.getElementById('confirmMessage').textContent = 
+        `¿Estás seguro de eliminar el material "${material.name}" (ID: ${material.id})? Esta acción no se puede deshacer y afectará a los productos que lo usan en su BOM.`;
+    
+    document.getElementById('confirmAction').onclick = async function() {
+        try {
+            const response = await fetch(`/api/materials/${id}`, {
+                method: 'DELETE',
+                credentials: 'include'
+            });
+
+            if (response.status === 204) {
+                showAlert('Material eliminado exitosamente', 'success');
+                bootstrap.Modal.getInstance(document.getElementById('confirmModal')).hide();
+                fetchMaterialsByCategory(); // Recargar la lista por categoría
+            } else {
+                const error = await response.json();
+                showAlert('Error: ' + (error.detail || 'Error desconocido'), 'danger');
+            }
+        } catch (error) {
+            showAlert('Error de conexión: ' + error.message, 'danger');
+        }
+        
+        bootstrap.Modal.getInstance(document.getElementById('confirmModal')).hide();
+    };
+
+    new bootstrap.Modal(document.getElementById('confirmModal')).show();
+}
+
+// === FUNCIONES PARA GESTIÓN DE COLORES ===
+
+function manageColors(materialId) {
+    // Buscar el material en todas las categorías
+    let material = null;
+    Object.keys(allMaterialsData).forEach(category => {
+        const found = allMaterialsData[category].find(m => m.id === materialId);
+        if (found) material = found;
+    });
+    
+    if (!material) return;
+    
+    currentMaterialForColors = material;
+    
+    document.getElementById('colorsModalTitle').innerHTML = 
+        `<i class="fas fa-palette"></i> Gestionar Colores - ${material.name}`;
+    
+    loadMaterialColors(materialId);
+    new bootstrap.Modal(document.getElementById('colorsModal')).show();
+}
+
+async function loadMaterialColors(materialId) {
+    const container = document.getElementById('materialColorsContainer');
+    container.innerHTML = '<div class="text-center"><div class="spinner-border spinner-border-sm"></div></div>';
+    
+    try {
+        const response = await fetch(`/api/materials/${materialId}/colors`, {
+            credentials: 'include'
+        });
+        
+        if (response.ok) {
+            const colors = await response.json();
+            renderMaterialColors(colors);
+        } else {
+            container.innerHTML = '<p class="text-muted">Error cargando colores</p>';
+        }
+    } catch (error) {
+        container.innerHTML = '<p class="text-muted">Error de conexión</p>';
+    }
+}
+
+function renderMaterialColors(colors) {
+    const container = document.getElementById('materialColorsContainer');
+    
+    if (colors.length === 0) {
+        container.innerHTML = '<p class="text-muted">No hay colores configurados</p>';
+        return;
+    }
+    
+    container.innerHTML = colors.map(color => `
+        <div class="card mb-2">
+            <div class="card-body py-2">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <strong>${color.color_name}</strong>
+                        <br><small class="text-success">$${color.price_per_unit.toFixed(2)}</small>
+                    </div>
+                    <button class="btn btn-outline-danger btn-sm" onclick="removeMaterialColor(${color.id})">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
+async function addMaterialColor() {
+    const colorName = document.getElementById('colorName').value.trim();
+    const colorPrice = parseFloat(document.getElementById('colorPrice').value);
+    
+    if (!colorName || !colorPrice || colorPrice <= 0) {
+        showAlert('Por favor completa todos los campos correctamente', 'warning');
+        return;
+    }
+    
+    if (!currentMaterialForColors) return;
+    
+    try {
+        // Primero crear o buscar el color
+        let colorId = null;
+        
+        // Buscar si el color ya existe
+        const existingColor = allColors.find(c => c.name.toLowerCase() === colorName.toLowerCase());
+        if (existingColor) {
+            colorId = existingColor.id;
+        } else {
+            // Crear nuevo color
+            const colorResponse = await fetch('/api/colors', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ name: colorName })
+            });
+            
+            if (colorResponse.ok) {
+                const newColor = await colorResponse.json();
+                colorId = newColor.id;
+                allColors.push(newColor);
+            } else {
+                throw new Error('Error creando color');
+            }
+        }
+        
+        // Agregar color al material
+        const materialColorResponse = await fetch(`/api/materials/${currentMaterialForColors.id}/colors`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({
+                material_id: currentMaterialForColors.id,
+                color_id: colorId,
+                price_per_unit: colorPrice
+            })
+        });
+        
+        if (materialColorResponse.ok) {
+            showAlert('Color agregado exitosamente', 'success');
+            document.getElementById('colorForm').reset();
+            loadMaterialColors(currentMaterialForColors.id);
+            fetchMaterialsByCategory(); // Refrescar vista principal
+        } else {
+            const error = await materialColorResponse.json();
+            showAlert('Error: ' + (error.detail || 'Error desconocido'), 'danger');
+        }
+        
+    } catch (error) {
+        showAlert('Error de conexión: ' + error.message, 'danger');
+    }
+}
+
+async function removeMaterialColor(materialColorId) {
+    if (!confirm('¿Estás seguro de eliminar este color?')) return;
+    
+    try {
+        const response = await fetch(`/api/materials/colors/${materialColorId}`, {
+            method: 'DELETE',
+            credentials: 'include'
+        });
+        
+        if (response.ok) {
+            showAlert('Color eliminado exitosamente', 'success');
+            loadMaterialColors(currentMaterialForColors.id);
+            fetchMaterialsByCategory(); // Refrescar vista principal
+        } else {
+            const error = await response.json();
+            showAlert('Error: ' + (error.detail || 'Error desconocido'), 'danger');
+        }
+    } catch (error) {
+        showAlert('Error de conexión: ' + error.message, 'danger');
+    }
+}
+
+// === CSV IMPORT/EXPORT FUNCTIONS ===
+
+async function downloadCsvTemplate() {
+    const category = document.querySelector('#categoryFilters .btn.active').dataset.category;
+    const categoryParam = category === 'all' ? '' : `?category=${category}`;
+    
+    try {
+        const response = await fetch(`/api/materials/csv/template${categoryParam}`, {
+            method: 'GET',
+            credentials: 'include'
+        });
+        
+        if (response.ok) {
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = response.headers.get('content-disposition')?.split('filename=')[1] || 'materials_template.csv';
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+            
+            showAlert('Plantilla CSV descargada exitosamente', 'success');
+        } else {
+            const error = await response.json();
+            showAlert('Error descargando plantilla: ' + (error.detail || 'Error desconocido'), 'danger');
+        }
+    } catch (error) {
+        showAlert('Error de conexión: ' + error.message, 'danger');
+    }
+}
+
+async function exportMaterialsCsv() {
+    const category = document.querySelector('#categoryFilters .btn.active').dataset.category;
+    const categoryParam = category === 'all' ? '' : `?category=${category}`;
+    
+    try {
+        const response = await fetch(`/api/materials/csv/export${categoryParam}`, {
+            method: 'GET',
+            credentials: 'include'
+        });
+        
+        if (response.ok) {
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = response.headers.get('content-disposition')?.split('filename=')[1] || 'materials.csv';
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+            
+            showAlert('Materiales exportados a CSV exitosamente', 'success');
+        } else {
+            const error = await response.json();
+            showAlert('Error exportando a CSV: ' + (error.detail || 'Error desconocido'), 'danger');
+        }
+    } catch (error) {
+        showAlert('Error de conexión: ' + error.message, 'danger');
+    }
+}
+
+function openImportCsvModal() {
+    // Create CSV import modal dynamically
+    const modalHtml = `
+        <div class="modal fade" id="importCsvModal" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Importar Materiales desde CSV</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>
+                            <strong>Formato CSV:</strong> El archivo debe tener las columnas: action, id, name, code, unit, category, cost_per_unit, selling_unit_length_m, description
+                        </div>
+                        <div class="mb-3">
+                            <label for="csvFile" class="form-label">Seleccionar archivo CSV</label>
+                            <input type="file" class="form-control" id="csvFile" accept=".csv" required>
+                        </div>
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            <strong>Acciones disponibles:</strong>
+                            <ul class="mb-0 mt-2">
+                                <li><code>create</code> - Crear nuevo material</li>
+                                <li><code>update</code> - Actualizar material existente (requiere ID)</li>
+                                <li><code>delete</code> - Eliminar material (requiere ID)</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="button" class="btn btn-primary" onclick="importMaterialsCsv()">
+                            <i class="fas fa-file-import me-2"></i>Importar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Remove existing modal if any
+    const existingModal = document.getElementById('importCsvModal');
+    if (existingModal) {
+        existingModal.remove();
+    }
+    
+    // Add modal to body
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    
+    // Show modal
+    new bootstrap.Modal(document.getElementById('importCsvModal')).show();
+}
+
+async function importMaterialsCsv() {
+    const fileInput = document.getElementById('csvFile');
+    const file = fileInput.files[0];
+    
+    if (!file) {
+        showAlert('Por favor selecciona un archivo CSV', 'warning');
+        return;
+    }
+    
+    if (!file.name.endsWith('.csv')) {
+        showAlert('El archivo debe ser un CSV', 'danger');
+        return;
+    }
+    
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    try {
+        // Show loading state
+        const importBtn = document.querySelector('#importCsvModal .btn-primary');
+        const originalText = importBtn.innerHTML;
+        importBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Importando...';
+        importBtn.disabled = true;
+        
+        const response = await fetch('/api/materials/csv/import', {
+            method: 'POST',
+            credentials: 'include',
+            body: formData
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok) {
+            // Show success summary
+            let message = `Import completado: ${result.success_count} exitosos, ${result.error_count} errores\n`;
+            message += `Creados: ${result.summary.created}, Actualizados: ${result.summary.updated}, Eliminados: ${result.summary.deleted}`;
+            
+            if (result.error_count > 0) {
+                message += `\n\nErrores encontrados:\n`;
+                result.errors.slice(0, 5).forEach(err => {
+                    message += `- Fila ${err.row}: ${err.error}\n`;
+                });
+                if (result.errors.length > 5) {
+                    message += `... y ${result.errors.length - 5} errores más`;
+                }
+            }
+            
+            showAlert(message, result.error_count > 0 ? 'warning' : 'success');
+            
+            // Close modal and refresh materials
+            bootstrap.Modal.getInstance(document.getElementById('importCsvModal')).hide();
+            fetchMaterialsByCategory();
+            
+        } else {
+            showAlert('Error importando CSV: ' + (result.detail || 'Error desconocido'), 'danger');
+        }
+        
+        // Restore button state
+        importBtn.innerHTML = originalText;
+        importBtn.disabled = false;
+        
+    } catch (error) {
+        showAlert('Error de conexión: ' + error.message, 'danger');
+        
+        // Restore button state
+        const importBtn = document.querySelector('#importCsvModal .btn-primary');
+        importBtn.innerHTML = '<i class="fas fa-file-import me-2"></i>Importar';
+        importBtn.disabled = false;
+    }
+}
+
+</script>
+{% endblock %}

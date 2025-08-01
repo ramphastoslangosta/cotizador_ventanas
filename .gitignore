@@ -1,0 +1,111 @@
+# FastAPI Window Quotation System - .gitignore
+# Generated for production deployment
+
+# === PYTHON ===
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# === VIRTUAL ENVIRONMENTS ===
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# === ENVIRONMENT VARIABLES ===
+.env
+.env.local
+.env.production
+.env.staging
+
+# === LOGS ===
+logs/*.log
+*.log
+
+# === DATABASE ===
+*.sqlite
+*.sqlite3
+*.db
+
+# === TEMPORARY FILES ===
+*.tmp
+*.temp
+*~
+.DS_Store
+Thumbs.db
+
+# === IDEs ===
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# === BACKUPS ===
+backups/
+*.sql.gz
+*.backup
+
+# === EXPORTS ===
+exports/
+user_exports/
+
+# === UPLOADS ===
+uploads/
+static/uploads/
+
+# === DEVELOPMENT FILES ===
+debug_*.py
+test_local.py
+*.development.*
+
+# === SECURITY ===
+*.pem
+*.key
+*.crt
+*.p12
+secrets.json
+
+# === OPERATING SYSTEM ===
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# === ALEMBIC ===
+alembic/versions/*.pyc
+
+# === PYTEST ===
+.pytest_cache/
+.coverage
+htmlcov/
+
+# === DOCUMENTATION BUILD ===
+docs/_build/
+site/
+
+# === COMPANY LOGOS (if sensitive) ===
+# static/logos/
+# Uncomment if company logos should not be in version control

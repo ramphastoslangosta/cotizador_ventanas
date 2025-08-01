@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+
+{% block title %}Iniciar Sesión - {{ super() }}{% endblock %}
+
+{% block public_content %}
+<div class="login-container d-flex align-items-center justify-content-center">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-6 col-lg-5">
+                <div class="card login-card">
+                    <div class="card-body p-5">
+                        <div class="text-center mb-4">
+                            <i class="bi bi-building text-primary" style="font-size: 3rem;"></i>
+                            <h2 class="mt-3 text-primary">Sistema de Cotización</h2>
+                            <p class="text-muted">Inicia sesión para continuar</p>
+                        </div>
+
+                        {% if error %}
+                        <div class="alert alert-danger" role="alert">
+                            <i class="bi bi-exclamation-triangle"></i>
+                            {{ error }}
+                        </div>
+                        {% endif %}
+
+                        <form method="post" action="/web/login">
+                            <div class="mb-3">
+                                <label for="email" class="form-label">
+                                    <i class="bi bi-envelope"></i> Email
+                                </label>
+                                <input type="email" class="form-control" id="email" name="email" required 
+                                       placeholder="tu@email.com">
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="password" class="form-label">
+                                    <i class="bi bi-lock"></i> Contraseña
+                                </label>
+                                <input type="password" class="form-control" id="password" name="password" required 
+                                       placeholder="Tu contraseña">
+                            </div>
+
+                            <div class="d-grid">
+                                <button type="submit" class="btn btn-primary btn-lg">
+                                    <i class="bi bi-box-arrow-in-right"></i>
+                                    Iniciar Sesión
+                                </button>
+                            </div>
+                        </form>
+
+                        <hr class="my-4">
+
+                        <div class="text-center">
+                            <p class="text-muted">¿No tienes cuenta?</p>
+                            <a href="/register" class="btn btn-outline-primary">
+                                <i class="bi bi-person-plus"></i>
+                                Crear cuenta nueva
+                            </a>
+                        </div>
+
+                        <!-- Demo credentials info -->
+                        <div class="mt-4 p-3 bg-light rounded">
+                            <h6 class="text-muted mb-2">
+                                <i class="bi bi-info-circle"></i> Credenciales de prueba:
+                            </h6>
+                            <small class="text-muted">
+                                <strong>Email:</strong> demo@test.com<br>
+                                <strong>Password:</strong> demo123
+                            </small>
+                            <br>
+                            <small class="text-muted">
+                                O crea tu propia cuenta usando el botón de arriba.
+                            </small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Features Info -->
+                <div class="row mt-4 text-white text-center">
+                    <div class="col-4">
+                        <i class="bi bi-calculator display-6"></i>
+                        <p class="mt-2 small">Cálculo Automático</p>
+                    </div>
+                    <div class="col-4">
+                        <i class="bi bi-file-earmark-pdf display-6"></i>
+                        <p class="mt-2 small">PDFs Profesionales</p>
+                    </div>
+                    <div class="col-4">
+                        <i class="bi bi-graph-up display-6"></i>
+                        <p class="mt-2 small">Reportes Detallados</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

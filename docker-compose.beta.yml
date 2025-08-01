@@ -1,0 +1,192 @@
+version: '3.8'
+
+# Docker Compose para entorno BETA
+# Sistema de Cotización de Ventanas v5.0.0-RESILIENT
+
+services:
+  # Aplicación principal FastAPI - Optimizada para 2GB RAM
+  app:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    container_name: ventanas-beta-app
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - SECRET_KEY=${SECRET_KEY}
+      - DEBUG=${DEBUG:-false}
+      - SESSION_EXPIRE_HOURS=${SESSION_EXPIRE_HOURS:-8}
+      - REDIS_URL=redis://redis:6379
+    env_file:
+      - .env
+    depends_on:
+      - postgres
+      - redis
+    volumes:
+      - ./static/uploads:/app/static/uploads
+      - ./logs:/app/logs
+    restart: unless-stopped
+    # Optimización de recursos para plan $12/mes (2GB RAM)
+    deploy:
+      resources:
+        limits:
+          memory: 768M
+          cpus: '0.8'
+        reservations:
+          memory: 512M
+          cpus: '0.5'
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 45s
+      timeout: 15s
+      retries: 3
+      start_period: 60s
+    networks:
+      - ventanas-network
+
+  # Base de datos PostgreSQL - Optimizada para 2GB RAM
+  postgres:
+    image: postgres:15-alpine
+    container_name: ventanas-beta-db
+    environment:
+      POSTGRES_DB: ventanas_beta_db
+      POSTGRES_USER: ${DB_USER:-ventanas_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-secure_password_change_me}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=es_MX.UTF-8"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backups:/backups
+    ports:
+      - "5432:5432"  # Solo para beta, remover en producción
+    restart: unless-stopped
+    # Optimización PostgreSQL para 2GB RAM
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+        reservations:
+          memory: 256M
+          cpus: '0.3'
+    command: >
+      postgres
+      -c shared_buffers=128MB
+      -c effective_cache_size=256MB
+      -c maintenance_work_mem=32MB
+      -c checkpoint_completion_target=0.9
+      -c wal_buffers=16MB
+      -c default_statistics_target=100
+      -c random_page_cost=1.1
+      -c effective_io_concurrency=200
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-ventanas_user} -d ventanas_beta_db"]
+      interval: 45s
+      timeout: 15s
+      retries: 5
+    networks:
+      - ventanas-network
+
+  # Redis para caché y rate limiting - Optimizada para 2GB RAM  
+  redis:
+    image: redis:7-alpine
+    container_name: ventanas-beta-redis
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"  # Solo para beta, remover en producción
+    restart: unless-stopped
+    # Optimización Redis para 2GB RAM
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: '0.2'
+        reservations:
+          memory: 64M
+          cpus: '0.1'
+    command: >
+      redis-server
+      --maxmemory 96mb
+      --maxmemory-policy allkeys-lru
+      --save 900 1
+      --save 300 10
+      --save 60 10000
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 45s
+      timeout: 10s
+      retries: 3
+    networks:
+      - ventanas-network
+
+  # Nginx reverse proxy con SSL
+  nginx:
+    image: nginx:alpine
+    container_name: ventanas-beta-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+      - ./static:/var/www/static:ro
+    depends_on:
+      - app
+    restart: unless-stopped
+    networks:
+      - ventanas-network
+
+  # Servicio de monitoreo y backup
+  backup:
+    image: postgres:15-alpine
+    container_name: ventanas-beta-backup
+    environment:
+      PGPASSWORD: ${DB_PASSWORD:-secure_password_change_me}
+    volumes:
+      - ./backups:/backups
+      - ./scripts:/scripts
+    depends_on:
+      - postgres
+    restart: "no"
+    profiles:
+      - backup
+    networks:
+      - ventanas-network
+    # Ejecutar backup manual: docker-compose --profile backup run backup
+    command: >
+      sh -c "
+        echo 'Creando backup...' &&
+        pg_dump -h postgres -U ${DB_USER:-ventanas_user} -d ventanas_beta_db > /backups/backup_$$(date +%Y%m%d_%H%M%S).sql &&
+        echo 'Backup completado' &&
+        gzip /backups/backup_$$(date +%Y%m%d_%H%M%S).sql
+      "
+
+  # Monitoreo de logs (opcional para beta)
+  logrotate:
+    image: linkyard/docker-logrotate
+    container_name: ventanas-beta-logrotate
+    volumes:
+      - ./logs:/logs
+      - ./logrotate.conf:/etc/logrotate.conf:ro
+    environment:
+      - CRON_SCHEDULE=0 2 * * *  # Ejecutar a las 2 AM diariamente
+    restart: unless-stopped
+    profiles:
+      - monitoring
+
+# Volúmenes persistentes
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+
+# Red personalizada
+networks:
+  ventanas-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

@@ -1,0 +1,268 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <h2>
+                <i class="fas fa-list-alt text-primary"></i>
+                Todas las Cotizaciones
+            </h2>
+            <a href="/quotes/new" class="btn btn-primary">
+                <i class="fas fa-plus"></i> Nueva Cotización
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Filtros y búsqueda -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="input-group">
+            <span class="input-group-text">
+                <i class="fas fa-search"></i>
+            </span>
+            <input type="text" id="searchInput" class="form-control" 
+                   placeholder="Buscar por cliente, email..." 
+                   onkeyup="filterQuotes()">
+        </div>
+    </div>
+    <div class="col-md-3">
+        <select id="statusFilter" class="form-select" onchange="filterQuotes()">
+            <option value="">Todos los estados</option>
+            <option value="nueva">Nueva</option>
+            <option value="reciente">Reciente</option>
+            <option value="vigente">Vigente</option>
+        </select>
+    </div>
+    <div class="col-md-3">
+        <div class="btn-group w-100">
+            <button class="btn btn-outline-secondary" onclick="exportToCSV()">
+                <i class="fas fa-download"></i> CSV
+            </button>
+            <button class="btn btn-outline-primary" onclick="toggleSelectAll()">
+                <i class="fas fa-check-square"></i> Seleccionar
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Lista de cotizaciones -->
+<div class="row" id="quotesContainer">
+    {% if quotes %}
+    {% for quote in quotes %}
+    <div class="col-md-6 mb-4 quote-item" data-quote-id="{{ quote.id }}">
+        <div class="card quote-card h-100" data-created="{{ quote.created_at.isoformat() }}">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <div class="d-flex align-items-center">
+                    <input type="checkbox" class="form-check-input me-2 quote-checkbox">
+                    <h6 class="mb-0">
+                        Cotización #{{ quote.id }}
+                        {% set days_old = (today - quote.created_at.date()).days %}
+                        {% if days_old == 0 %}
+                        <span class="badge bg-success ms-2">Nueva</span>
+                        {% elif days_old <= 7 %}
+                        <span class="badge bg-primary ms-2">Reciente</span>
+                        {% elif days_old <= 30 %}
+                        <span class="badge bg-info ms-2">Vigente</span>
+                        {% else %}
+                        <span class="badge bg-secondary ms-2">Antigua</span>
+                        {% endif %}
+                    </h6>
+                </div>
+                <small class="text-muted">{{ quote.created_at.strftime('%d/%m/%Y') }}</small>
+            </div>
+            
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-8">
+                        <h6 class="text-primary mb-1">{{ quote.client_name }}</h6>
+                        {% if quote.client_email %}
+                        <small class="text-muted d-block">
+                            <i class="fas fa-envelope"></i> {{ quote.client_email }}
+                        </small>
+                        {% endif %}
+                        {% if quote.client_phone %}
+                        <small class="text-muted d-block">
+                            <i class="fas fa-phone"></i> {{ quote.client_phone }}
+                        </small>
+                        {% endif %}
+                    </div>
+                    <div class="col-4 text-end">
+                        <h5 class="text-success mb-0">${{ "%.2f"|format(quote.total_final) }}</h5>
+                        <small class="text-muted">Total</small>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between text-center">
+                        <div>
+                            <div class="fw-bold text-primary">{{ quote.items_count }}</div>
+                            <small class="text-muted">Ventanas</small>
+                        </div>
+                        <div>
+                            <div class="fw-bold text-info">{{ "%.1f"|format(quote.total_area) }}m²</div>
+                            <small class="text-muted">Área</small>
+                        </div>
+                        <div>
+                            <div class="fw-bold text-warning">${{ "%.0f"|format(quote.price_per_m2) }}</div>
+                            <small class="text-muted">Por m²</small>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <small class="text-muted">Ventanas:</small><br>
+                    {% if quote.sample_items %}
+                    {% for item in quote.sample_items %}
+                        <span class="badge bg-secondary me-1">
+                            {{ item.window_type|title }} {{ item.width_cm }}x{{ item.height_cm }}cm
+                        </span>
+                    {% endfor %}
+                    {% if quote.remaining_items > 0 %}
+                        <span class="badge bg-light text-dark">+{{ quote.remaining_items }} más</span>
+                    {% endif %}
+                    {% else %}
+                    <span class="text-muted">Sin items</span>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <div class="card-footer bg-transparent">
+                <div class="btn-group w-100">
+                    <a href="/quotes/{{ quote.id }}" class="btn btn-outline-primary btn-sm">
+                        <i class="fas fa-eye"></i> Ver
+                    </a>
+                    <button class="btn btn-outline-success btn-sm" onclick="generatePDF({{ quote.id }})">
+                        <i class="fas fa-file-pdf"></i> PDF
+                    </button>
+                    <button class="btn btn-outline-info btn-sm" onclick="duplicateQuote({{ quote.id }})">
+                        <i class="fas fa-copy"></i> Duplicar
+                    </button>
+                    <button class="btn btn-outline-danger btn-sm" onclick="deleteQuote({{ quote.id }})">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+    {% else %}
+    <div class="col-12">
+        <div class="text-center py-5">
+            <i class="fas fa-file-invoice-dollar fa-5x text-muted mb-4"></i>
+            <h4 class="text-muted">No hay cotizaciones aún</h4>
+            <p class="text-muted">Crea tu primera cotización para comenzar</p>
+            <a href="/quotes/new" class="btn btn-primary">
+                <i class="fas fa-plus"></i> Nueva Cotización
+            </a>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+function showAlert(message, type = 'info') {
+    const alertsContainer = document.getElementById('alerts-container') || document.body;
+    const alert = document.createElement('div');
+    alert.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
+    alert.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+    alert.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    alertsContainer.appendChild(alert);
+    
+    setTimeout(() => {
+        if (alert.parentNode) {
+            alert.parentNode.removeChild(alert);
+        }
+    }, 5000);
+}
+
+function generatePDF(quoteId) {
+    showAlert('Generando PDF de la cotización #' + quoteId + '...', 'info');
+}
+
+function deleteQuote(quoteId) {
+    if (confirm('¿Estás seguro de que deseas eliminar esta cotización?')) {
+        showAlert('Función de eliminar en desarrollo...', 'warning');
+    }
+}
+
+function duplicateQuote(quoteId) {
+    showAlert('Duplicando cotización #' + quoteId + '...', 'info');
+}
+
+function filterQuotes() {
+    const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+    const statusFilter = document.getElementById('statusFilter').value;
+    const quoteItems = document.querySelectorAll('.quote-item');
+    
+    quoteItems.forEach(item => {
+        const clientName = item.querySelector('.text-primary').textContent.toLowerCase();
+        const email = item.querySelector('.fa-envelope')?.parentElement?.textContent || '';
+        const badge = item.querySelector('.badge');
+        const status = badge ? badge.textContent.toLowerCase() : '';
+        
+        const matchesSearch = clientName.includes(searchTerm) || email.toLowerCase().includes(searchTerm);
+        const matchesStatus = !statusFilter || status.includes(statusFilter);
+        
+        if (matchesSearch && matchesStatus) {
+            item.style.display = 'block';
+        } else {
+            item.style.display = 'none';
+        }
+    });
+}
+
+function toggleSelectAll() {
+    const checkboxes = document.querySelectorAll('.quote-checkbox');
+    const button = event.target.closest('button');
+    
+    const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+    
+    checkboxes.forEach(cb => cb.checked = !allChecked);
+    
+    if (allChecked) {
+        button.innerHTML = '<i class="fas fa-check-square"></i> Seleccionar';
+        button.classList.remove('btn-primary');
+        button.classList.add('btn-outline-primary');
+    } else {
+        button.innerHTML = '<i class="fas fa-square"></i> Deseleccionar';
+        button.classList.remove('btn-outline-primary');
+        button.classList.add('btn-primary');
+    }
+}
+
+function exportToCSV() {
+    let csvContent = "ID,Cliente,Total,Fecha\n";
+    
+    document.querySelectorAll('.quote-item').forEach(quote => {
+        if (quote.style.display !== 'none') {
+            const id = quote.dataset.quoteId;
+            const client = quote.querySelector('.text-primary').textContent;
+            const total = quote.querySelector('.text-success').textContent;
+            const date = quote.querySelector('.text-muted').textContent;
+            
+            csvContent += `${id},"${client}","${total}","${date}"\n`;
+        }
+    });
+    
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.setAttribute('hidden', '');
+    a.setAttribute('href', url);
+    a.setAttribute('download', 'cotizaciones.csv');
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    
+    showAlert('Archivo CSV descargado exitosamente', 'success');
+}
+</script>
+
+{% endblock %}

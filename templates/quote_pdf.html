@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cotización {{ quote_number }}</title>
+</head>
+<body>
+    <!-- Header de la empresa -->
+    <div class="header">
+        <div class="header-content">
+            {% if company_logo_base64 %}
+            <div class="logo-section">
+                <img src="{{ company_logo_base64 }}" alt="Logo {{ company.name }}" class="company-logo">
+            </div>
+            {% endif %}
+            <div class="company-details">
+                <div class="company-name">{{ company.name }}</div>
+                <div class="company-info">
+                    {% if company.address %}{{ company.address }}<br>{% endif %}
+                    {% if company.phone %}Tel: {{ company.phone }}{% endif %}
+                    {% if company.email %} | Email: {{ company.email }}{% endif %}<br>
+                    {% if company.rfc %}RFC: {{ company.rfc }}{% endif %}
+                    {% if company.website %} | {{ company.website }}{% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Título de la cotización -->
+    <h1 class="quote-title">COTIZACIÓN {{ quote_number }}</h1>
+
+    <!-- Información general -->
+    <div class="info-section">
+        <div class="info-box" style="width: 48%;">
+            <h3>Información del Cliente</h3>
+            <p><strong>Cliente:</strong> {{ quote.client.name }}</p>
+            {% if quote.client.email %}
+            <p><strong>Email:</strong> {{ quote.client.email }}</p>
+            {% endif %}
+            {% if quote.client.phone %}
+            <p><strong>Teléfono:</strong> {{ quote.client.phone }}</p>
+            {% endif %}
+            {% if quote.client.address %}
+            <p><strong>Dirección:</strong> {{ quote.client.address }}</p>
+            {% endif %}
+        </div>
+        
+        <div class="info-box" style="width: 48%;">
+            <h3>Información de la Cotización</h3>
+            <p><strong>Número:</strong> {{ quote_number }}</p>
+            <p><strong>Fecha:</strong> {{ generated_date.strftime('%d/%m/%Y') }}</p>
+            <p><strong>Validez:</strong> 30 días</p>
+            <p><strong>Total de Ventanas:</strong> {{ total_windows }}</p>
+            <p><strong>Área Total:</strong> {{ "%.2f"|format(total_area) }} m²</p>
+        </div>
+    </div>
+
+    <!-- Tabla de productos -->
+    <h2>Detalle de Productos</h2>
+    <table class="products-table">
+        <thead>
+            <tr>
+                <th>Descripción</th>
+                <th>Dimensiones</th>
+                <th>Vidrio</th>
+                <th class="center">Cant.</th>
+                <th class="center">Área (m²)</th>
+                <th class="number">Precio Unit.</th>
+                <th class="number">Total</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for product in products %}
+            <tr>
+                <td>
+                    <strong>{{ product.product_bom_name }}</strong><br>
+                    <small>{{ product.description }}</small>
+                </td>
+                <td class="center">{{ product.dimensions }}</td>
+                <td>{{ product.glass_type }}</td>
+                <td class="center">{{ product.quantity }}</td>
+                <td class="number">{{ "%.2f"|format(product.area_m2) }}</td>
+                <td class="number">${{ "%.2f"|format(product.unit_selling_price) }}</td>
+                <td class="number">${{ "%.2f"|format(product.total_selling_price) }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <!-- Sección de totales -->
+    <div class="totals-section">
+        <table class="totals-table">
+            <tr>
+                <td class="label">Subtotal sin IVA:</td>
+                <td class="amount">{{ subtotal_with_overhead_formatted }}</td>
+            </tr>
+            <tr>
+                <td class="label">IVA (16%):</td>
+                <td class="amount">{{ tax_amount_formatted }}</td>
+            </tr>
+            <tr class="total-final">
+                <td class="label">TOTAL FINAL:</td>
+                <td class="amount">{{ total_final_formatted }}</td>
+            </tr>
+        </table>
+    </div>
+
+    <!-- Notas adicionales -->
+    <div class="validity-note">
+        <strong>Condiciones:</strong>
+        <ul>
+            <li>Los precios incluyen IVA y están expresados en pesos mexicanos.</li>
+            <li>La validez de esta cotización es de 30 días a partir de la fecha de emisión.</li>
+            <li>Los precios no incluyen instalación salvo que se especifique lo contrario.</li>
+            <li>Las medidas finales serán confirmadas durante la visita técnica.</li>
+            <li>Tiempo de entrega: 15-20 días hábiles después de la confirmación del pedido.</li>
+        </ul>
+    </div>
+
+    {% if quote.notes %}
+    <div class="validity-note">
+        <strong>Notas Adicionales:</strong><br>
+        {{ quote.notes }}
+    </div>
+    {% endif %}
+
+    <!-- Footer -->
+    <div class="footer">
+        <p>Cotización generada automáticamente el {{ generated_date.strftime('%d/%m/%Y a las %H:%M') }}</p>
+        <p>{{ company.name }} - {{ company.email }} - {{ company.phone }}</p>
+    </div>
+</body>
+</html>

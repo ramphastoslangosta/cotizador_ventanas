@@ -1,0 +1,729 @@
+{% extends "base.html" %}
+
+{% block title %}Catálogo de Productos (BOM) - {{ super() }}{% endblock %}
+
+{% block content %}
+<div id="alert-container"></div>
+
+<!-- Header -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h1 class="h3 text-primary">
+                    <i class="fas fa-box-seam"></i>
+                    Catálogo de Productos (BOM)
+                </h1>
+                <p class="text-muted">Define tus productos terminados (ventanas) con su Bill of Materials (BOM)</p>
+            </div>
+            <div>
+                <div class="btn-group me-2">
+                    <button class="btn btn-success" onclick="resetProductModal()" data-bs-toggle="modal" data-bs-target="#addProductModal">
+                        <i class="fas fa-plus-circle"></i>
+                        Nuevo Producto
+                    </button>
+                    <button type="button" class="btn btn-success dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown">
+                        <span class="visually-hidden">Toggle Dropdown</span>
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li><h6 class="dropdown-header">CSV Operations</h6></li>
+                        <li><a class="dropdown-item" href="#" onclick="downloadProductsCsvTemplate()">
+                            <i class="fas fa-download me-2"></i>Descargar Plantilla CSV
+                        </a></li>
+                        <li><a class="dropdown-item" href="#" onclick="exportProductsCsv()">
+                            <i class="fas fa-file-export me-2"></i>Exportar a CSV
+                        </a></li>
+                        <li><a class="dropdown-item" href="#" onclick="openImportProductsCsvModal()">
+                            <i class="fas fa-file-import me-2"></i>Importar desde CSV
+                        </a></li>
+                    </ul>
+                </div>
+                <a href="/dashboard" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left"></i>
+                    Volver al Dashboard
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Stats Cards -->
+<div class="row mb-4">
+    <div class="col-md-3 mb-3">
+        <div class="card stat-card">
+            <div class="card-body text-center">
+                <i class="fas fa-boxes text-primary" style="font-size: 2rem;"></i>
+                <h4 class="mt-2 text-primary" id="totalProductsCount">0</h4>
+                <small class="text-muted">Total Productos</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-9">
+        <div class="card">
+            <div class="card-body">
+                <h5>Resumen del Catálogo de Productos</h5>
+                <p class="text-muted">Cada producto tiene un BOM que especifica los materiales y cantidades necesarias para su fabricación.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Products List -->
+<div class="row" id="productsContainer">
+    <!-- Productos se cargarán dinámicamente aquí -->
+    <div class="col-12 text-center py-5" id="loadingProducts">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Cargando productos...</span>
+        </div>
+        <p class="text-muted mt-2">Cargando productos...</p>
+    </div>
+</div>
+
+<!-- Modal para Agregar/Editar Producto -->
+<div class="modal fade" id="addProductModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="productModalTitle">
+                    <i class="fas fa-plus-circle"></i>
+                    Nuevo Producto
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="productForm">
+                    <input type="hidden" id="productId">
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="productName" class="form-label">Nombre del Producto *</label>
+                            <input type="text" class="form-control" id="productName" required 
+                                   placeholder="Ej: Ventana Corrediza 2 Hojas">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="productDescription" class="form-label">Descripción (opcional)</label>
+                            <input type="text" class="form-control" id="productDescription" 
+                                   placeholder="Ej: Sistema corredizo estándar">
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label for="productWindowType" class="form-label">Tipo de Ventana *</label>
+                            <select class="form-select" id="productWindowType" required>
+                                <option value="">Seleccionar...</option>
+                                {% for wt in window_types %}
+                                <option value="{{ wt.value }}">{{ wt.label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="productAluminumLine" class="form-label">Línea de Aluminio *</label>
+                            <select class="form-select" id="productAluminumLine" required>
+                                <option value="">Seleccionar...</option>
+                                {% for al in aluminum_lines %}
+                                <option value="{{ al.value }}">{{ al.label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="productGlassType" class="form-label">Tipo de Vidrio (No se usa aquí, solo para referencia)</label>
+                            <select class="form-select" id="productGlassType" disabled>
+                                <option value="">Se selecciona en cotización</option>
+                                {% for gt in glass_types %}
+                                <option value="{{ gt.value }}">{{ gt.label }}</option>
+                                {% endfor %}
+                            </select>
+                            <div class="form-text">El tipo de vidrio se elige al cotizar.</div>
+                        </div>
+                    </div>
+
+                    <h5 class="mt-4 mb-3">Rangos de Dimensiones Permitidas (cm)</h5>
+                    <div class="row">
+                        <div class="col-md-3 mb-3">
+                            <label for="minWidthCm" class="form-label">Ancho Mín. *</label>
+                            <input type="number" class="form-control" id="minWidthCm" step="0.1" min="1" required>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label for="maxWidthCm" class="form-label">Ancho Máx. *</label>
+                            <input type="number" class="form-control" id="maxWidthCm" step="0.1" min="1" required>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label for="minHeightCm" class="form-label">Alto Mín. *</label>
+                            <input type="number" class="form-control" id="minHeightCm" step="0.1" min="1" required>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label for="maxHeightCm" class="form-label">Alto Máx. *</label>
+                            <input type="number" class="form-control" id="maxHeightCm" step="0.1" min="1" required>
+                        </div>
+                    </div>
+
+                    <h5 class="mt-4 mb-3">Bill of Materials (BOM) - Fórmulas Dinámicas</h5>
+                    <div id="bomItemsContainer">
+                        <!-- BOM items will be added here -->
+                    </div>
+                    <button type="button" class="btn btn-outline-secondary btn-sm mb-3" onclick="addBomItem()">
+                        <i class="fas fa-plus"></i> Añadir Material al BOM
+                    </button>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-success" onclick="saveProduct()">
+                    <i class="fas fa-save"></i>
+                    Guardar Producto
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Template para un item de BOM en el modal -->
+<template id="bomItemTemplate">
+    <div class="bom-item row mb-2 p-2 border rounded align-items-end">
+        <div class="col-md-4 mb-2">
+            <label class="form-label small">Material *</label>
+            <select class="form-select bom-material-select" required>
+                <option value="">Seleccionar Material...</option>
+                {% for material in app_materials %}
+                <option value="{{ material.id }}" data-unit="{{ material.unit }}" data-cost="{{ material.cost_per_unit }}">
+                    {{ material.name }} ({{ material.unit }}) - ${{ material.cost_per_unit }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-3 mb-2">
+            <label class="form-label small">Tipo de Material *</label>
+            <select class="form-select bom-material-type" required>
+                <option value="">Seleccionar Tipo...</option>
+                <option value="PERFIL">PERFIL</option>
+                <option value="VIDRIO">VIDRIO</option>
+                <option value="HERRAJE">HERRAJE</option>
+                <option value="CONSUMIBLE">CONSUMIBLE</option>
+            </select>
+        </div>
+        <div class="col-md-3 mb-2">
+            <label class="form-label small">Fórmula Cantidad *</label>
+            <input type="text" class="form-control bom-quantity-formula" required 
+                   placeholder="Ej: 2 * width_m + height_m">
+            <div class="form-text">Variables: width_m, height_m, width_cm, height_cm, quantity, math</div>
+        </div>
+        <div class="col-md-1 mb-2">
+            <label class="form-label small">Desperdicio</label>
+            <input type="number" class="form-control bom-waste-factor" step="0.01" min="1" value="1.05">
+        </div>
+        <div class="col-md-1 mb-2">
+            <button type="button" class="btn btn-danger btn-sm w-100" onclick="removeBomItem(this)">
+                <i class="fas fa-trash"></i>
+            </button>
+        </div>
+    </div>
+</template>
+
+<!-- Modal de Confirmación -->
+<div class="modal fade" id="confirmModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-exclamation-triangle text-warning"></i>
+                    Confirmar Acción
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p id="confirmMessage">¿Estás seguro de realizar esta acción?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-danger" id="confirmAction">
+                    Confirmar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- CSV Import Modal -->
+<div class="modal fade" id="importProductsCsvModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Importar Productos desde CSV</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    <strong>Formato CSV:</strong> El archivo debe tener las columnas: action, id, name, window_type, aluminum_line, min_width_cm, max_width_cm, min_height_cm, max_height_cm, bom_json, description
+                </div>
+                <div class="mb-3">
+                    <label for="productsCsvFile" class="form-label">Seleccionar archivo CSV</label>
+                    <input type="file" class="form-control" id="productsCsvFile" accept=".csv" required>
+                </div>
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    <strong>Acciones disponibles:</strong>
+                    <ul class="mb-0 mt-2">
+                        <li><code>create</code> - Crear nuevo producto</li>
+                        <li><code>update</code> - Actualizar producto existente (requiere ID)</li>
+                        <li><code>delete</code> - Eliminar producto (requiere ID)</li>
+                    </ul>
+                </div>
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    <strong>BOM JSON:</strong> El BOM debe ser un array JSON con objetos que contengan: material_id, material_type, quantity_formula, waste_factor, description (opcional)
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="importProductsCsv()">
+                    <i class="fas fa-file-import me-2"></i>Importar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let allProducts = [];
+// Convertir a número los campos Decimal que vienen como string
+let allMaterials = {{ app_materials | tojson }}.map(m => ({
+    ...m,
+    cost_per_unit: parseFloat(m.cost_per_unit),
+    selling_unit_length_m: m.selling_unit_length_m ? parseFloat(m.selling_unit_length_m) : null
+})); 
+let editingProductId = null;
+
+// Map para acceso rápido a materiales
+const materialsMap = new Map(allMaterials.map(m => [m.id, m]));
+
+document.addEventListener('DOMContentLoaded', fetchProducts);
+
+async function fetchProducts() {
+    document.getElementById('loadingProducts').style.display = 'block';
+    try {
+        const response = await fetch('/api/products', {
+            method: 'GET',
+            credentials: 'include'
+        });
+        if (response.ok) {
+            const data = await response.json();
+            // Convertir 'quantity_needed' a número en los items del BOM
+            allProducts = data.map(p => ({
+                ...p,
+                min_width_cm: parseFloat(p.min_width_cm),
+                max_width_cm: parseFloat(p.max_width_cm),
+                min_height_cm: parseFloat(p.min_height_cm),
+                max_height_cm: parseFloat(p.max_height_cm),
+                bom: p.bom.map(item => ({
+                    ...item,
+                    waste_factor: parseFloat(item.waste_factor)
+                }))
+            }));
+            renderProducts();
+        } else {
+            const error = await response.json();
+            showAlert('Error al cargar productos: ' + (error.detail || 'Error desconocido'), 'danger');
+        }
+    } catch (error) {
+        showAlert('Error de conexión al cargar productos: ' + error.message, 'danger');
+    } finally {
+        document.getElementById('loadingProducts').style.display = 'none';
+    }
+}
+
+function formatEnumString(enumString) {
+    if (!enumString) return 'N/A';
+    return enumString.replace(/_/g, ' ').split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+}
+
+function renderProducts() {
+    const container = document.getElementById('productsContainer');
+    container.innerHTML = ''; // Limpiar antes de renderizar
+
+    if (allProducts.length === 0) {
+        container.innerHTML = `
+            <div class="col-12 text-center py-5">
+                <i class="fas fa-box-open fa-5x text-muted mb-4"></i>
+                <h4 class="text-muted">No hay productos registrados</h4>
+                <p class="text-muted">Define tu primer producto (ventana) con su BOM.</p>
+            </div>
+        `;
+    } else {
+        allProducts.forEach(product => {
+            const col = document.createElement('div');
+            col.className = 'col-md-6 mb-4 product-item';
+            
+            let bomDetails = '';
+            if (product.bom && product.bom.length > 0) {
+                bomDetails = product.bom.map(item => {
+                    const material = materialsMap.get(item.material_id);
+                    return `<li>${material ? material.name : 'Material Desconocido'} (${item.quantity_formula}) - Tipo: ${item.material_type}</li>`;
+                }).join('');
+                bomDetails = `<ul class="list-unstyled list-group list-group-flush small mt-2">${bomDetails}</ul>`;
+            } else {
+                bomDetails = '<p class="text-muted small">Sin BOM definido</p>';
+            }
+
+            col.innerHTML = `
+                <div class="card h-100">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h6 class="mb-0">${product.name}</h6>
+                        <span class="badge bg-primary">${formatEnumString(product.window_type)}</span>
+                    </div>
+                    <div class="card-body">
+                        <p class="card-text text-muted small">${product.description || 'Sin descripción'}</p>
+                        <div class="row text-center mb-2">
+                            <div class="col-6">
+                                <small class="text-muted">Línea Aluminio</small>
+                                <div class="fw-bold">${formatEnumString(product.aluminum_line)}</div>
+                            </div>
+                            <div class="col-6">
+                                <small class="text-muted">Rangos (cm)</small>
+                                <div class="fw-bold">${product.min_width_cm}x${product.min_height_cm} a ${product.max_width_cm}x${product.max_height_cm}</div>
+                            </div>
+                        </div>
+                        <hr>
+                        <h6>Componentes (BOM):</h6>
+                        <div class="bom-section">
+                            <small class="text-muted">ID: #${product.id}</small>
+                            ${bomDetails}
+                        </div>
+                    </div>
+                    <div class="card-footer bg-transparent">
+                        <div class="btn-group w-100">
+                            <button class="btn btn-outline-primary btn-sm" onclick="editProduct(${product.id})">
+                                <i class="fas fa-edit"></i> Editar
+                            </button>
+                            <button class="btn btn-outline-danger btn-sm" onclick="confirmDeleteProduct(${product.id})">
+                                <i class="fas fa-trash"></i> Eliminar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            container.appendChild(col);
+        });
+    }
+    document.getElementById('totalProductsCount').textContent = allProducts.length;
+}
+
+function resetProductModal() {
+    document.getElementById('productForm').reset();
+    document.getElementById('productId').value = '';
+    document.getElementById('productModalTitle').innerHTML = '<i class="fas fa-plus-circle"></i> Nuevo Producto';
+    document.getElementById('bomItemsContainer').innerHTML = ''; // Limpiar BOM
+    document.getElementById('productGlassType').value = ''; // Ensure this is reset
+    editingProductId = null;
+    addBomItem(); // Añadir un item de BOM vacío por defecto
+}
+
+function addBomItem(bomItem = {}) { // Recibe un objeto bomItem para rellenar
+    const template = document.getElementById('bomItemTemplate');
+    const clone = template.content.cloneNode(true);
+    
+    const materialSelect = clone.querySelector('.bom-material-select');
+    const materialTypeSelect = clone.querySelector('.bom-material-type');
+    const quantityFormulaInput = clone.querySelector('.bom-quantity-formula');
+    const wasteFactorInput = clone.querySelector('.bom-waste-factor');
+
+    // Populate options for the material select dynamically if they are not pre-rendered by Jinja
+    if (materialSelect.options.length <= 1) { // Only add if default "Seleccionar Material" is the only one
+        allMaterials.forEach(material => {
+            const option = document.createElement('option');
+            option.value = material.id;
+            option.textContent = `${material.name} (${material.unit}) - $${material.cost_per_unit.toFixed(2)}`;
+            materialSelect.appendChild(option);
+        });
+    }
+
+    // Set initial values if bomItem is provided (for editing)
+    if (bomItem.material_id) materialSelect.value = bomItem.material_id;
+    if (bomItem.material_type) materialTypeSelect.value = bomItem.material_type;
+    if (bomItem.quantity_formula) quantityFormulaInput.value = bomItem.quantity_formula;
+    if (bomItem.waste_factor) wasteFactorInput.value = bomItem.waste_factor;
+
+    document.getElementById('bomItemsContainer').appendChild(clone);
+}
+
+function removeBomItem(button) {
+    button.closest('.bom-item').remove();
+}
+
+function editProduct(id) {
+    const product = allProducts.find(p => p.id === id);
+    if (!product) return;
+
+    editingProductId = id;
+    
+    document.getElementById('productModalTitle').innerHTML = '<i class="fas fa-edit"></i> Editar Producto';
+    document.getElementById('productId').value = product.id;
+    document.getElementById('productName').value = product.name;
+    document.getElementById('productDescription').value = product.description || '';
+    document.getElementById('productWindowType').value = product.window_type;
+    document.getElementById('productAluminumLine').value = product.aluminum_line;
+    // productGlassType no se edita aquí, ya que se selecciona en la cotización
+    document.getElementById('minWidthCm').value = product.min_width_cm;
+    document.getElementById('maxWidthCm').value = product.max_width_cm;
+    document.getElementById('minHeightCm').value = product.min_height_cm;
+    document.getElementById('maxHeightCm').value = product.max_height_cm;
+
+
+    // Rellenar BOM
+    document.getElementById('bomItemsContainer').innerHTML = ''; // Limpiar antes de rellenar
+    if (product.bom && product.bom.length > 0) {
+        product.bom.forEach(item => {
+            addBomItem(item); // Pasa el objeto BOMItem completo
+        });
+    } else {
+        addBomItem(); // Si no hay BOM, añadir uno vacío
+    }
+
+    new bootstrap.Modal(document.getElementById('addProductModal')).show();
+}
+
+async function saveProduct() {
+    const form = document.getElementById('productForm');
+    if (!form.checkValidity()) {
+        form.reportValidity();
+        return;
+    }
+
+    const bomItems = [];
+    document.querySelectorAll('#bomItemsContainer .bom-item').forEach(itemDiv => {
+        const materialId = parseInt(itemDiv.querySelector('.bom-material-select').value);
+        const materialType = itemDiv.querySelector('.bom-material-type').value;
+        const quantityFormula = itemDiv.querySelector('.bom-quantity-formula').value;
+        const wasteFactor = parseFloat(itemDiv.querySelector('.bom-waste-factor').value);
+
+        bomItems.push({ 
+            material_id: materialId, 
+            material_type: materialType,
+            quantity_formula: quantityFormula,
+            waste_factor: wasteFactor
+        });
+    });
+
+    const productData = {
+        name: document.getElementById('productName').value,
+        description: document.getElementById('productDescription').value || null,
+        window_type: document.getElementById('productWindowType').value,
+        aluminum_line: document.getElementById('productAluminumLine').value,
+        min_width_cm: parseFloat(document.getElementById('minWidthCm').value),
+        max_width_cm: parseFloat(document.getElementById('maxWidthCm').value),
+        min_height_cm: parseFloat(document.getElementById('minHeightCm').value),
+        max_height_cm: parseFloat(document.getElementById('maxHeightCm').value),
+        bom: bomItems
+    };
+
+    try {
+        let response;
+        
+        if (editingProductId) {
+            response = await fetch(`/api/products/${editingProductId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                credentials: 'include',
+                body: JSON.stringify(productData)
+            });
+        } else {
+            response = await fetch('/api/products', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                credentials: 'include',
+                body: JSON.stringify(productData)
+            });
+        }
+
+        if (response.ok) {
+            showAlert(editingProductId ? 'Producto actualizado exitosamente' : 'Producto creado exitosamente', 'success');
+            bootstrap.Modal.getInstance(document.getElementById('addProductModal')).hide();
+            fetchProducts(); // Recargar la lista de productos
+        } else {
+            const error = await response.json();
+            showAlert('Error: ' + (error.detail || 'Error desconocido'), 'danger');
+        }
+    } catch (error) {
+        showAlert('Error de conexión: ' + error.message, 'danger');
+    }
+}
+
+function confirmDeleteProduct(id) {
+    const product = allProducts.find(p => p.id === id);
+    if (!product) return;
+
+    document.getElementById('confirmMessage').textContent = 
+        `¿Estás seguro de eliminar el producto "${product.name}" (ID: ${product.id})? Esta acción no se puede deshacer.`;
+    
+    document.getElementById('confirmAction').onclick = async function() {
+        try {
+            const response = await fetch(`/api/products/${id}`, {
+                method: 'DELETE',
+                credentials: 'include'
+            });
+
+            if (response.status === 204) {
+                showAlert('Producto eliminado exitosamente', 'success');
+                bootstrap.Modal.getInstance(document.getElementById('confirmModal')).hide();
+                fetchProducts(); // Recargar la lista
+            } else {
+                const error = await response.json();
+                showAlert('Error: ' + (error.detail || 'Error desconocido'), 'danger');
+            }
+        } catch (error) {
+            showAlert('Error de conexión: ' + error.message, 'danger');
+        }
+        
+        bootstrap.Modal.getInstance(document.getElementById('confirmModal')).hide();
+    };
+
+    new bootstrap.Modal(document.getElementById('confirmModal')).show();
+}
+
+// === CSV Operations ===
+
+async function downloadProductsCsvTemplate() {
+    try {
+        const response = await fetch('/api/products/csv/template', {
+            method: 'GET',
+            credentials: 'include'
+        });
+        
+        if (response.ok) {
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'products_template.csv';
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+            showAlert('Plantilla CSV descargada exitosamente', 'success');
+        } else {
+            const error = await response.json();
+            showAlert('Error descargando plantilla: ' + (error.detail || 'Error desconocido'), 'danger');
+        }
+    } catch (error) {
+        showAlert('Error de conexión: ' + error.message, 'danger');
+    }
+}
+
+async function exportProductsCsv() {
+    try {
+        const response = await fetch('/api/products/csv/export', {
+            method: 'GET',
+            credentials: 'include'
+        });
+        
+        if (response.ok) {
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'products.csv';
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+            showAlert('Productos exportados exitosamente', 'success');
+        } else {
+            const error = await response.json();
+            showAlert('Error exportando productos: ' + (error.detail || 'Error desconocido'), 'danger');
+        }
+    } catch (error) {
+        showAlert('Error de conexión: ' + error.message, 'danger');
+    }
+}
+
+function openImportProductsCsvModal() {
+    // Reset file input
+    const fileInput = document.getElementById('productsCsvFile');
+    if (fileInput) {
+        fileInput.value = '';
+    }
+    
+    // Show modal
+    new bootstrap.Modal(document.getElementById('importProductsCsvModal')).show();
+}
+
+async function importProductsCsv() {
+    const fileInput = document.getElementById('productsCsvFile');
+    const file = fileInput.files[0];
+    
+    if (!file) {
+        showAlert('Por favor selecciona un archivo CSV', 'warning');
+        return;
+    }
+    
+    if (!file.name.endsWith('.csv')) {
+        showAlert('El archivo debe ser un CSV', 'danger');
+        return;
+    }
+    
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    try {
+        // Show loading state
+        const importBtn = document.querySelector('#importProductsCsvModal .btn-primary');
+        const originalText = importBtn.innerHTML;
+        importBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Importando...';
+        importBtn.disabled = true;
+        
+        const response = await fetch('/api/products/csv/import', {
+            method: 'POST',
+            credentials: 'include',
+            body: formData
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok) {
+            // Show success summary
+            let message = `Import completado: ${result.success_count} exitosos, ${result.error_count} errores\n`;
+            message += `Creados: ${result.summary.created}, Actualizados: ${result.summary.updated}, Eliminados: ${result.summary.deleted}`;
+            
+            if (result.error_count > 0) {
+                message += `\n\nErrores encontrados:\n`;
+                result.errors.slice(0, 5).forEach(err => {
+                    message += `- Fila ${err.row}: ${err.error}\n`;
+                });
+                if (result.errors.length > 5) {
+                    message += `... y ${result.errors.length - 5} errores más`;
+                }
+            }
+            
+            showAlert(message, result.error_count > 0 ? 'warning' : 'success');
+            
+            // Close modal and refresh products
+            bootstrap.Modal.getInstance(document.getElementById('importProductsCsvModal')).hide();
+            fetchProducts();
+            
+        } else {
+            showAlert('Error importando CSV: ' + (result.detail || 'Error desconocido'), 'danger');
+        }
+        
+        // Restore button state
+        importBtn.innerHTML = originalText;
+        importBtn.disabled = false;
+        
+    } catch (error) {
+        showAlert('Error de conexión: ' + error.message, 'danger');
+        
+        // Restore button state
+        const importBtn = document.querySelector('#importProductsCsvModal .btn-primary');
+        importBtn.innerHTML = '<i class="fas fa-file-import me-2"></i>Importar';
+        importBtn.disabled = false;
+    }
+}
+
+</script>
+{% endblock %}

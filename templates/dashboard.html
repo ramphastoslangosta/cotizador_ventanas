@@ -1,0 +1,266 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - {{ super() }}{% endblock %}
+
+{% block content %}
+<div id="alert-container"></div>
+
+<!-- Header -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h1 class="h3 text-primary">
+            <i class="bi bi-speedometer2"></i>
+            ¡Bienvenido, {{ user.full_name }}!
+        </h1>
+        <p class="text-muted">Panel de control del sistema de cotización</p>
+    </div>
+    <div class="d-flex align-items-center"> {# Added d-flex to align buttons #}
+        <!-- Moved "Cotización de Ejemplo" button to the header -->
+        <a href="#" class="btn btn-outline-success btn-lg me-2" onclick="createExampleQuote()">
+            <i class="bi bi-magic"></i>
+            Cotización de Ejemplo
+        </a>
+        <a href="/quotes/new" class="btn btn-primary btn-lg">
+            <i class="bi bi-plus-circle"></i>
+            Nueva Cotización
+        </a>
+    </div>
+</div>
+
+<!-- Stats Cards -->
+<div class="row mb-4">
+    <div class="col-md-3 mb-3">
+        <div class="card stat-card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title text-muted mb-1">Total Cotizaciones</h6>
+                        <h3 class="mb-0 text-primary">{{ total_quotes }}</h3>
+                    </div>
+                    <div class="text-primary">
+                        <i class="bi bi-file-text" style="font-size: 2rem;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3 mb-3">
+        <div class="card stat-card success">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title text-muted mb-1">Cotizaciones Recientes</h6>
+                        <h3 class="mb-0 text-success">{{ recent_quotes|length }}</h3>
+                    </div>
+                    <div class="text-success">
+                        <i class="bi bi-graph-up" style="font-size: 2rem;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3 mb-3">
+        <div class="card stat-card warning">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title text-muted mb-1">Valor Total Reciente</h6>
+                        <h3 class="mb-0 text-warning" id="total-value">
+                            {% set total = 0 %}
+                            {% for quote in recent_quotes %}
+                                {% set total = total + quote.total_final %}
+                            {% endfor %}
+                            ${{ "{:,.2f}".format(total) }}
+                        </h3>
+                    </div>
+                    <div class="text-warning">
+                        <i class="bi bi-currency-dollar" style="font-size: 2rem;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3 mb-3">
+        <div class="card stat-card danger">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title text-muted mb-1">Promedio por Cotización</h6>
+                        <h3 class="mb-0 text-info" id="average-value">
+                            {% if recent_quotes %}
+                                {% set avg = (total / recent_quotes|length) %}
+                                ${{ "{:,.2f}".format(avg) }}
+                            {% else %}
+                                $0.00
+                            {% endif %}
+                        </h3>
+                    </div>
+                    <div class="text-info">
+                        <i class="bi bi-calculator" style="font-size: 2rem;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Removed: Quick Actions container entirely -->
+{#
+<div class="row mb-4">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-lightning"></i>
+                    Acciones Rápidas
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <a href="#" class="text-decoration-none" onclick="createExampleQuote()">
+                            <div class="d-flex align-items-center p-3 bg-success bg-opacity-10 rounded">
+                                <i class="bi bi-magic text-success me-3" style="font-size: 2rem;"></i>
+                                <div>
+                                    <h6 class="mb-1 text-success">Cotización de Ejemplo</h6>
+                                    <small class="text-muted">Generar ejemplo automático</small>
+                                </div>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+#}
+
+<!-- Recent Quotes -->
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="card-title mb-0">
+            <i class="bi bi-clock-history"></i>
+            Cotizaciones Recientes
+        </h5>
+        <a href="/quotes" class="btn btn-outline-primary btn-sm">
+            Ver todas
+            <i class="bi bi-arrow-right"></i>
+        </a>
+    </div>
+    <div class="card-body">
+        {% if recent_quotes %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Cliente</th>
+                            <th>Items</th>
+                            <th>Total</th>
+                            <th>Fecha</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for quote in recent_quotes %}
+                        <tr>
+                            <td>
+                                <span class="badge bg-primary">#{{ quote.id }}</span>
+                            </td>
+                            <td>
+                                <strong>{{ quote.client_name }}</strong>
+                            </td>
+                            <td>
+                                <span class="badge bg-info">{{ quote.items_count }} items</span>
+                            </td>
+                            <td>
+                                <strong class="text-success">${{ "{:,.2f}".format(quote.total_final) }}</strong>
+                            </td>
+                            <td>
+                                <small class="text-muted">
+                                    {{ quote.created_at.strftime('%d/%m/%Y %H:%M') }}
+                                </small>
+                            </td>
+                            <td>
+                                <a href="/quotes/{{ quote.id }}" class="btn btn-sm btn-outline-primary">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="text-center py-5">
+                <i class="bi bi-inbox text-muted" style="font-size: 4rem;"></i>
+                <h4 class="text-muted mt-3">No hay cotizaciones aún</h4>
+                <p class="text-muted">¡Crea tu primera cotización para comenzar!</p>
+                <a href="/quotes/new" class="btn btn-primary">
+                    <i class="bi bi-plus-circle"></i>
+                    Crear Primera Cotización
+                </a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+async function createExampleQuote() {
+    try {
+        // Mostrar loading
+        showAlert('Generando cotización de ejemplo...', 'info');
+
+        const response = await fetch('/quotes/example', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            credentials: 'include' // Esto incluye las cookies automáticamente
+        });
+
+        if (response.ok) {
+            const result = await response.json();
+            showAlert('¡Cotización de ejemplo creada exitosamente!', 'success');
+
+            // Redirigir a la cotización creada después de 2 segundos
+            setTimeout(() => {
+                window.location.href = `/quotes/${result.quote.quote_id}`;
+            }, 2000);
+        } else {
+            const error = await response.json();
+            showAlert('Error: ' + (error.detail || 'Error desconocido'), 'danger');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        showAlert('Error de conexión', 'danger');
+    }
+}
+
+function showComingSoon() {
+    showAlert('Funcionalidad próximamente disponible', 'info');
+}
+
+function getCookieValue(name) {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop().split(';').shift();
+}
+
+// Mostrar mensaje de bienvenida si es la primera vez
+document.addEventListener('DOMContentLoaded', function() {
+    const isFirstVisit = localStorage.getItem('dashboard_visited') !== 'true';
+    if (isFirstVisit) {
+        showAlert('¡Bienvenido al Sistema de Cotización! Explora las funcionalidades desde el menú lateral.', 'info');
+        localStorage.setItem('dashboard_visited', 'true');
+    }
+});
+
+</script>
+{% endblock %}
