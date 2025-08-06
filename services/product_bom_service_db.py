@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from models.product_bom_models import AppMaterial, AppProduct, BOMItem, MaterialUnit, MaterialType
 from models.quote_models import WindowType, AluminumLine, GlassType, LaborCost, Glass
 from database import AppMaterial as DBAppMaterial, AppProduct as DBAppProduct
-from database import DatabaseMaterialService, DatabaseProductService
+from database import DatabaseMaterialService, DatabaseProductService, DatabaseColorService, Color, MaterialColor
 
 class ProductBOMServiceDB:
     """Versión de ProductBOMService que usa base de datos en lugar de memoria"""
@@ -214,111 +214,261 @@ class ProductBOMServiceDB:
 
 # === Función para inicializar datos de ejemplo ===
 def initialize_sample_data(db: Session):
-    """Inicializa la base de datos con datos de ejemplo si está vacía"""
+    """Inicializa la base de datos con datos de ejemplo si está vacía - VERSIÓN MEJORADA"""
     service = ProductBOMServiceDB(db)
+    color_service = DatabaseColorService(db)
     
     # Verificar si ya hay datos
     if len(service.get_all_materials()) > 0:
         return  # Ya hay datos, no inicializar
     
-    print("Inicializando base de datos con datos de ejemplo...")
+    print("🚀 Inicializando base de datos con catálogo mejorado de materiales...")
     
-    # Crear materiales de ejemplo
-    materials_data = [
-        {"name": "Perfil L. Nac. 3\" Riel Sup.", "unit": MaterialUnit.ML, "cost_per_unit": Decimal('50.00'), "selling_unit_length_m": Decimal('6.0'), "description": "Riel superior corrediza 3\""},
-        {"name": "Perfil L. Nac. 3\" Jamba", "unit": MaterialUnit.ML, "cost_per_unit": Decimal('48.00'), "selling_unit_length_m": Decimal('6.0'), "description": "Jamba vertical corrediza 3\""},
-        {"name": "Perfil L. Nac. 3\" Zoclo", "unit": MaterialUnit.ML, "cost_per_unit": Decimal('55.00'), "selling_unit_length_m": Decimal('6.0'), "description": "Zoclo inferior corrediza 3\""},
-        {"name": "Perfil L. Nac. 3\" Traslape", "unit": MaterialUnit.ML, "cost_per_unit": Decimal('60.00'), "selling_unit_length_m": Decimal('6.0'), "description": "Traslape central corrediza 3\""},
-        {"name": "Rodamiento Doble Línea 3\"", "unit": MaterialUnit.PZA, "cost_per_unit": Decimal('15.00'), "description": "Rodamiento para hojas corredizas"},
-        {"name": "Felpa 1/2\"", "unit": MaterialUnit.ML, "cost_per_unit": Decimal('2.50'), "description": "Burlete de felpa para sellado"},
-        {"name": "Silicona Neutra", "unit": MaterialUnit.CARTUCHO, "cost_per_unit": Decimal('80.00'), "description": "Sellador de silicona neutra"},
-        {"name": "Pijas #8 x 1\"", "unit": MaterialUnit.PZA, "cost_per_unit": Decimal('0.50'), "description": "Tornillos para ensamble"},
-        {"name": "Perfil Serie 35 Contramarco", "unit": MaterialUnit.ML, "cost_per_unit": Decimal('65.00'), "selling_unit_length_m": Decimal('6.0'), "description": "Contramarco para proyectante Serie 35"},
-        {"name": "Perfil Serie 35 Marco Móvil", "unit": MaterialUnit.ML, "cost_per_unit": Decimal('70.00'), "selling_unit_length_m": Decimal('6.0'), "description": "Marco móvil para proyectante Serie 35"},
-        {"name": "Brazo Proyectante 10\"", "unit": MaterialUnit.PZA, "cost_per_unit": Decimal('70.00'), "description": "Brazo para ventana proyectante"},
-        {"name": "Cremona Serie 35", "unit": MaterialUnit.PZA, "cost_per_unit": Decimal('45.00'), "description": "Manija con cierre para proyectante"},
-        {"name": "Perfil Fijo 3\" Escalonado", "unit": MaterialUnit.ML, "cost_per_unit": Decimal('78.90'), "selling_unit_length_m": Decimal('6.0'), "description": "Marco perimetral escalonado fijo 3\""},
-        {"name": "Junquillo Fijo 3\"", "unit": MaterialUnit.ML, "cost_per_unit": Decimal('28.90'), "selling_unit_length_m": Decimal('6.0'), "description": "Junquillo para sujeción de vidrio fijo 3\""},
-        {"name": "Cuñas de Hule", "unit": MaterialUnit.PZA, "cost_per_unit": Decimal('0.80'), "description": "Cuñas para asentar vidrio"},
+    # === FASE 1: CREAR COLORES ===
+    print("📋 Creando sistema de colores...")
+    
+    aluminum_colors = [
+        {"name": "Natural", "code": "NAT", "description": "Aluminio natural sin pintura"},
+        {"name": "Blanco", "code": "BLA", "description": "Blanco texturizado"},
+        {"name": "Negro", "code": "NEG", "description": "Negro mate texturizado"},
+        {"name": "Bronze", "code": "BRO", "description": "Bronze anodizado"},
+        {"name": "Champagne", "code": "CHA", "description": "Champagne anodizado"},
+        {"name": "Madera Clara", "code": "MCA", "description": "Imitación madera color claro"},
     ]
     
-    created_materials = {}
-    for mat_data in materials_data:
-        material = AppMaterial(**mat_data)
-        created_material = service.create_material(material)
-        created_materials[mat_data["name"]] = created_material
-        print(f"✓ Material creado: {created_material.name} (ID: {created_material.id})")
+    # Multiplicadores de precio por color
+    color_pricing = {
+        "Natural": Decimal("1.00"),    # Precio base
+        "Blanco": Decimal("1.15"),     # 15% premium
+        "Negro": Decimal("1.20"),      # 20% premium  
+        "Bronze": Decimal("1.25"),     # 25% premium
+        "Champagne": Decimal("1.25"),  # 25% premium
+        "Madera Clara": Decimal("1.40"), # 40% premium
+    }
     
-    # Crear productos de ejemplo
-    # Ventana Corrediza 2 Hojas
+    created_colors = {}
+    for color_data in aluminum_colors:
+        created_color = color_service.create_color(color_data)
+        created_colors[color_data["name"]] = created_color
+        print(f"  ✓ Color: {created_color.name} ({created_color.code})")
+    
+    # === FASE 2: CREAR MATERIALES POR CATEGORÍA ===
+    print("\n🏗️ Creando catálogo de materiales por categoría...")
+    
+    # 2.1 PERFILES (Aluminio con colores)
+    print("  📦 Categoría: PERFILES")
+    perfiles_data = [
+        # Línea Nacional 3"
+        {"name": "Perfil Riel Superior 3\"", "code": "PER-NAC3-RS", "cost": Decimal("52.00"), "unit": MaterialUnit.ML, "selling_unit_length_m": Decimal("6.0")},
+        {"name": "Perfil Jamba 3\"", "code": "PER-NAC3-JA", "cost": Decimal("48.00"), "unit": MaterialUnit.ML, "selling_unit_length_m": Decimal("6.0")},
+        {"name": "Perfil Zócalo 3\"", "code": "PER-NAC3-ZO", "cost": Decimal("55.00"), "unit": MaterialUnit.ML, "selling_unit_length_m": Decimal("6.0")},
+        {"name": "Perfil Traslape 3\"", "code": "PER-NAC3-TR", "cost": Decimal("60.00"), "unit": MaterialUnit.ML, "selling_unit_length_m": Decimal("6.0")},
+        # Serie 35
+        {"name": "Perfil Contramarco Serie 35", "code": "PER-S35-CM", "cost": Decimal("65.00"), "unit": MaterialUnit.ML, "selling_unit_length_m": Decimal("6.0")},
+        {"name": "Perfil Marco Móvil Serie 35", "code": "PER-S35-MM", "cost": Decimal("70.00"), "unit": MaterialUnit.ML, "selling_unit_length_m": Decimal("6.0")},
+        # Fijos
+        {"name": "Perfil Fijo Escalonado 3\"", "code": "PER-NAC3-FE", "cost": Decimal("78.90"), "unit": MaterialUnit.ML, "selling_unit_length_m": Decimal("6.0")},
+        {"name": "Junquillo Fijo 3\"", "code": "PER-NAC3-JF", "cost": Decimal("28.90"), "unit": MaterialUnit.ML, "selling_unit_length_m": Decimal("6.0")},
+    ]
+    
+    created_profiles = {}
+    for perfil_data in perfiles_data:
+        # Crear el perfil base
+        material = AppMaterial(
+            name=perfil_data["name"],
+            code=perfil_data["code"],
+            unit=perfil_data["unit"],
+            category="Perfiles",
+            cost_per_unit=perfil_data["cost"],
+            selling_unit_length_m=perfil_data.get("selling_unit_length_m"),
+            description=f"Perfil de aluminio - {perfil_data['name']}"
+        )
+        created_material = service.create_material(material)
+        created_profiles[perfil_data["name"]] = created_material
+        print(f"    ✓ {created_material.name} (ID: {created_material.id})")
+        
+        # Crear variaciones de color para este perfil
+        for color_name, color_multiplier in color_pricing.items():
+            color = created_colors[color_name]
+            price_per_unit = perfil_data["cost"] * color_multiplier
+            
+            material_color_data = {
+                "material_id": created_material.id,
+                "color_id": color.id,
+                "price_per_unit": price_per_unit,
+                "is_available": True
+            }
+            color_service.create_material_color(material_color_data)
+    
+    print(f"    📊 {len(created_profiles)} perfiles con {len(aluminum_colors)} colores = {len(created_profiles) * len(aluminum_colors)} combinaciones")
+    
+    # 2.2 VIDRIOS
+    print("  🪟 Categoría: VIDRIOS")
+    vidrios_data = [
+        {"name": "Vidrio Flotado 6mm", "code": "VID-FLOT-6", "cost": Decimal("145.00"), "unit": MaterialUnit.M2},
+        {"name": "Vidrio Templado 6mm", "code": "VID-TEMP-6", "cost": Decimal("280.00"), "unit": MaterialUnit.M2},
+        {"name": "Vidrio Laminado 6mm", "code": "VID-LAM-6", "cost": Decimal("320.00"), "unit": MaterialUnit.M2},
+        {"name": "Vidrio Reflectivo Bronze 6mm", "code": "VID-REF-BR6", "cost": Decimal("195.00"), "unit": MaterialUnit.M2},
+        {"name": "Vidrio Doble Acristalamiento", "code": "VID-DOBLE-6", "cost": Decimal("450.00"), "unit": MaterialUnit.M2},
+    ]
+    
+    created_glass = {}
+    for vidrio_data in vidrios_data:
+        material = AppMaterial(
+            name=vidrio_data["name"],
+            code=vidrio_data["code"],
+            unit=vidrio_data["unit"],
+            category="Vidrio",
+            cost_per_unit=vidrio_data["cost"],
+            description=f"Vidrio para ventanas - {vidrio_data['name']}"
+        )
+        created_material = service.create_material(material)
+        created_glass[vidrio_data["name"]] = created_material
+        print(f"    ✓ {created_material.name} (ID: {created_material.id})")
+    
+    # 2.3 HERRAJES
+    print("  🔧 Categoría: HERRAJES")
+    herrajes_data = [
+        {"name": "Rodamiento Doble Línea 3\"", "code": "HER-ROD-3", "cost": Decimal("15.00"), "unit": MaterialUnit.PZA},
+        {"name": "Brazo Proyectante 10\"", "code": "HER-BRA-10", "cost": Decimal("70.00"), "unit": MaterialUnit.PZA},
+        {"name": "Cremona Serie 35", "code": "HER-CRE-S35", "cost": Decimal("45.00"), "unit": MaterialUnit.PZA},
+        {"name": "Cerradura Multipunto", "code": "HER-CER-MP", "cost": Decimal("150.00"), "unit": MaterialUnit.PZA},
+        {"name": "Bisagra Reforzada", "code": "HER-BIS-REF", "cost": Decimal("25.00"), "unit": MaterialUnit.PZA},
+    ]
+    
+    created_hardware = {}
+    for herraje_data in herrajes_data:
+        material = AppMaterial(
+            name=herraje_data["name"],
+            code=herraje_data["code"],
+            unit=herraje_data["unit"],
+            category="Herrajes",
+            cost_per_unit=herraje_data["cost"],
+            description=f"Herraje para ventanas - {herraje_data['name']}"
+        )
+        created_material = service.create_material(material)
+        created_hardware[herraje_data["name"]] = created_material
+        print(f"    ✓ {created_material.name} (ID: {created_material.id})")
+    
+    # 2.4 CONSUMIBLES
+    print("  🧰 Categoría: CONSUMIBLES")
+    consumibles_data = [
+        {"name": "Felpa Negra 1/2\"", "code": "CON-FEL-NEG", "cost": Decimal("2.50"), "unit": MaterialUnit.ML},
+        {"name": "Silicona Neutra Transparente", "code": "CON-SIL-NEU", "cost": Decimal("80.00"), "unit": MaterialUnit.CARTUCHO},
+        {"name": "Pijas #8 x 1\"", "code": "CON-PIJ-8x1", "cost": Decimal("0.50"), "unit": MaterialUnit.PZA},
+        {"name": "Cuñas de Hule", "code": "CON-CUN-HUL", "cost": Decimal("0.80"), "unit": MaterialUnit.PZA},
+        {"name": "Tornillo Autoperforante", "code": "CON-TOR-AUTO", "cost": Decimal("1.20"), "unit": MaterialUnit.PZA},
+    ]
+    
+    created_consumables = {}
+    for consumible_data in consumibles_data:
+        material = AppMaterial(
+            name=consumible_data["name"],
+            code=consumible_data["code"],
+            unit=consumible_data["unit"],
+            category="Consumibles",
+            cost_per_unit=consumible_data["cost"],
+            description=f"Consumible para ventanas - {consumible_data['name']}"
+        )
+        created_material = service.create_material(material)
+        created_consumables[consumible_data["name"]] = created_material
+        print(f"    ✓ {created_material.name} (ID: {created_material.id})")
+    
+    # === FASE 3: CREAR PRODUCTOS CON BOMS MEJORADOS ===
+    print("\n🏠 Creando productos con BOMs mejorados...")
+    
+    # 3.1 VENTANA CORREDIZA 2 HOJAS CON VIDRIO
     corrediza_bom = [
-        BOMItem(material_id=created_materials["Perfil L. Nac. 3\" Riel Sup."].id, material_type=MaterialType.PERFIL, quantity_formula="width_m", description="Riel Superior"),
-        BOMItem(material_id=created_materials["Perfil L. Nac. 3\" Zoclo"].id, material_type=MaterialType.PERFIL, quantity_formula="width_m", description="Zoclo Inferior"),
-        BOMItem(material_id=created_materials["Perfil L. Nac. 3\" Jamba"].id, material_type=MaterialType.PERFIL, quantity_formula="2 * height_m", description="Jambas Laterales"),
-        BOMItem(material_id=created_materials["Perfil L. Nac. 3\" Jamba"].id, material_type=MaterialType.PERFIL, quantity_formula="2 * (width_m / 2)", description="Cabezales de Hojas"),
-        BOMItem(material_id=created_materials["Perfil L. Nac. 3\" Zoclo"].id, material_type=MaterialType.PERFIL, quantity_formula="2 * (width_m / 2)", description="Zoclos de Hojas"),
-        BOMItem(material_id=created_materials["Perfil L. Nac. 3\" Traslape"].id, material_type=MaterialType.PERFIL, quantity_formula="height_m", description="Traslape Vertical"),
-        BOMItem(material_id=created_materials["Rodamiento Doble Línea 3\""].id, material_type=MaterialType.HERRAJE, quantity_formula="4", description="Rodamientos (4 por ventana)"),
-        BOMItem(material_id=created_materials["Felpa 1/2\""].id, material_type=MaterialType.CONSUMIBLE, quantity_formula="4 * (width_m / 2 + height_m)", description="Felpa para Hojas"),
-        BOMItem(material_id=created_materials["Silicona Neutra"].id, material_type=MaterialType.CONSUMIBLE, quantity_formula="0.5", description="Silicona (medio cartucho)"),
-        BOMItem(material_id=created_materials["Pijas #8 x 1\""].id, material_type=MaterialType.CONSUMIBLE, quantity_formula="20", description="Pijas (cantidad fija)"),
-        BOMItem(material_id=created_materials["Cuñas de Hule"].id, material_type=MaterialType.CONSUMIBLE, quantity_formula="4 * 2", description="Cuñas de hule (4 por paño, 2 paños)"),
+        # Perfiles (con colores disponibles)
+        BOMItem(material_id=created_profiles["Perfil Riel Superior 3\""].id, material_type=MaterialType.PERFIL, quantity_formula="width_m", description="Riel Superior"),
+        BOMItem(material_id=created_profiles["Perfil Zócalo 3\""].id, material_type=MaterialType.PERFIL, quantity_formula="width_m", description="Zócalo Inferior"),
+        BOMItem(material_id=created_profiles["Perfil Jamba 3\""].id, material_type=MaterialType.PERFIL, quantity_formula="2 * height_m", description="Jambas Laterales"),
+        BOMItem(material_id=created_profiles["Perfil Jamba 3\""].id, material_type=MaterialType.PERFIL, quantity_formula="2 * (width_m / 2)", description="Cabezales de Hojas"),
+        BOMItem(material_id=created_profiles["Perfil Zócalo 3\""].id, material_type=MaterialType.PERFIL, quantity_formula="2 * (width_m / 2)", description="Zócalos de Hojas"),
+        BOMItem(material_id=created_profiles["Perfil Traslape 3\""].id, material_type=MaterialType.PERFIL, quantity_formula="height_m", description="Traslape Vertical"),
+        # Vidrio
+        BOMItem(material_id=created_glass["Vidrio Flotado 6mm"].id, material_type=MaterialType.VIDRIO, quantity_formula="area_m2 * 0.5", description="Vidrio por paño (50% del área total)"),
+        # Herrajes
+        BOMItem(material_id=created_hardware["Rodamiento Doble Línea 3\""].id, material_type=MaterialType.HERRAJE, quantity_formula="4", description="Rodamientos (4 por ventana)"),
+        # Consumibles
+        BOMItem(material_id=created_consumables["Felpa Negra 1/2\""].id, material_type=MaterialType.CONSUMIBLE, quantity_formula="4 * (width_m / 2 + height_m)", description="Felpa perimetral"),
+        BOMItem(material_id=created_consumables["Silicona Neutra Transparente"].id, material_type=MaterialType.CONSUMIBLE, quantity_formula="0.5", description="Silicona (medio cartucho)"),
+        BOMItem(material_id=created_consumables["Pijas #8 x 1\""].id, material_type=MaterialType.CONSUMIBLE, quantity_formula="20", description="Pijas de ensamble"),
+        BOMItem(material_id=created_consumables["Cuñas de Hule"].id, material_type=MaterialType.CONSUMIBLE, quantity_formula="8", description="Cuñas de hule (4 por paño × 2)"),
     ]
     
     corrediza_product = AppProduct(
-        name="Ventana Corrediza 2 Hojas (Línea 3\")",
+        name="Ventana Corrediza 2 Hojas con Vidrio (Línea 3\")",
         window_type=WindowType.CORREDIZA,
         aluminum_line=AluminumLine.SERIE_3,
         min_width_cm=Decimal('80'), max_width_cm=Decimal('300'),
         min_height_cm=Decimal('60'), max_height_cm=Decimal('250'),
-        description="Sistema corredizo de 2 hojas, adaptable a dimensiones.",
+        description="Sistema corredizo de 2 hojas con vidrio incluido, disponible en 6 colores.",
         bom=corrediza_bom
     )
     created_corrediza = service.create_product(corrediza_product)
-    print(f"✓ Producto creado: {created_corrediza.name} (ID: {created_corrediza.id})")
+    print(f"  ✓ {created_corrediza.name} (ID: {created_corrediza.id})")
     
-    # Ventana Fija
+    # 3.2 VENTANA FIJA CON VIDRIO
     fija_bom = [
-        BOMItem(material_id=created_materials["Perfil Fijo 3\" Escalonado"].id, material_type=MaterialType.PERFIL, quantity_formula="2 * (width_m + height_m)", description="Marco Perimetral Escalonado"),
-        BOMItem(material_id=created_materials["Junquillo Fijo 3\""].id, material_type=MaterialType.PERFIL, quantity_formula="2 * (width_m + height_m)", description="Junquillo de sujeción de vidrio"),
-        BOMItem(material_id=created_materials["Silicona Neutra"].id, material_type=MaterialType.CONSUMIBLE, quantity_formula="0.3", description="Silicona (cantidad fija)"),
-        BOMItem(material_id=created_materials["Pijas #8 x 1\""].id, material_type=MaterialType.CONSUMIBLE, quantity_formula="10", description="Pijas (cantidad fija)"),
-        BOMItem(material_id=created_materials["Cuñas de Hule"].id, material_type=MaterialType.CONSUMIBLE, quantity_formula="4", description="Cuñas de hule (4 por paño)"),
+        # Perfiles (con colores disponibles)
+        BOMItem(material_id=created_profiles["Perfil Fijo Escalonado 3\""].id, material_type=MaterialType.PERFIL, quantity_formula="2 * (width_m + height_m)", description="Marco Perimetral Escalonado"),
+        BOMItem(material_id=created_profiles["Junquillo Fijo 3\""].id, material_type=MaterialType.PERFIL, quantity_formula="2 * (width_m + height_m)", description="Junquillo de sujeción"),
+        # Vidrio
+        BOMItem(material_id=created_glass["Vidrio Templado 6mm"].id, material_type=MaterialType.VIDRIO, quantity_formula="area_m2", description="Vidrio templado completo"),
+        # Consumibles
+        BOMItem(material_id=created_consumables["Silicona Neutra Transparente"].id, material_type=MaterialType.CONSUMIBLE, quantity_formula="0.3", description="Silicona para sellado"),
+        BOMItem(material_id=created_consumables["Pijas #8 x 1\""].id, material_type=MaterialType.CONSUMIBLE, quantity_formula="10", description="Pijas de fijación"),
+        BOMItem(material_id=created_consumables["Cuñas de Hule"].id, material_type=MaterialType.CONSUMIBLE, quantity_formula="4", description="Cuñas de asentamiento"),
     ]
     
     fija_product = AppProduct(
-        name="Ventana Fija (Línea 3\")",
+        name="Ventana Fija con Vidrio Templado (Línea 3\")",
         window_type=WindowType.FIJA,
         aluminum_line=AluminumLine.SERIE_3,
         min_width_cm=Decimal('50'), max_width_cm=Decimal('200'),
         min_height_cm=Decimal('50'), max_height_cm=Decimal('180'),
-        description="Sistema fijo para iluminación, adaptable a dimensiones.",
+        description="Sistema fijo con vidrio templado, disponible en 6 colores.",
         bom=fija_bom
     )
     created_fija = service.create_product(fija_product)
-    print(f"✓ Producto creado: {created_fija.name} (ID: {created_fija.id})")
+    print(f"  ✓ {created_fija.name} (ID: {created_fija.id})")
     
-    # Ventana Proyectante
+    # 3.3 VENTANA PROYECTANTE CON VIDRIO
     proyectante_bom = [
-        BOMItem(material_id=created_materials["Perfil Serie 35 Contramarco"].id, material_type=MaterialType.PERFIL, quantity_formula="2 * (width_m + height_m)", description="Contramarco Fijo"),
-        BOMItem(material_id=created_materials["Perfil Serie 35 Marco Móvil"].id, material_type=MaterialType.PERFIL, quantity_formula="2 * (width_m + height_m)", description="Marco Móvil de Hoja"),
-        BOMItem(material_id=created_materials["Brazo Proyectante 10\""].id, material_type=MaterialType.HERRAJE, quantity_formula="2", description="Brazos Proyectantes (2 por ventana)"),
-        BOMItem(material_id=created_materials["Cremona Serie 35"].id, material_type=MaterialType.HERRAJE, quantity_formula="1", description="Cremona (1 por ventana)"),
-        BOMItem(material_id=created_materials["Silicona Neutra"].id, material_type=MaterialType.CONSUMIBLE, quantity_formula="0.4", description="Silicona (cantidad fija)"),
-        BOMItem(material_id=created_materials["Pijas #8 x 1\""].id, material_type=MaterialType.CONSUMIBLE, quantity_formula="15", description="Pijas (cantidad fija)"),
-        BOMItem(material_id=created_materials["Cuñas de Hule"].id, material_type=MaterialType.CONSUMIBLE, quantity_formula="4", description="Cuñas de hule (4 por paño)"),
+        # Perfiles (con colores disponibles)
+        BOMItem(material_id=created_profiles["Perfil Contramarco Serie 35"].id, material_type=MaterialType.PERFIL, quantity_formula="2 * (width_m + height_m)", description="Contramarco Fijo"),
+        BOMItem(material_id=created_profiles["Perfil Marco Móvil Serie 35"].id, material_type=MaterialType.PERFIL, quantity_formula="2 * (width_m + height_m)", description="Marco Móvil de Hoja"),
+        # Vidrio
+        BOMItem(material_id=created_glass["Vidrio Laminado 6mm"].id, material_type=MaterialType.VIDRIO, quantity_formula="area_m2", description="Vidrio laminado de seguridad"),
+        # Herrajes
+        BOMItem(material_id=created_hardware["Brazo Proyectante 10\""].id, material_type=MaterialType.HERRAJE, quantity_formula="2", description="Brazos proyectantes"),
+        BOMItem(material_id=created_hardware["Cremona Serie 35"].id, material_type=MaterialType.HERRAJE, quantity_formula="1", description="Cremona de cierre"),
+        # Consumibles
+        BOMItem(material_id=created_consumables["Silicona Neutra Transparente"].id, material_type=MaterialType.CONSUMIBLE, quantity_formula="0.4", description="Silicona de sellado"),
+        BOMItem(material_id=created_consumables["Tornillo Autoperforante"].id, material_type=MaterialType.CONSUMIBLE, quantity_formula="15", description="Tornillos de herrajes"),
+        BOMItem(material_id=created_consumables["Cuñas de Hule"].id, material_type=MaterialType.CONSUMIBLE, quantity_formula="4", description="Cuñas de vidrio"),
     ]
     
     proyectante_product = AppProduct(
-        name="Ventana Proyectada (Serie 35)",
+        name="Ventana Proyectante con Vidrio Laminado (Serie 35)",
         window_type=WindowType.PROYECTANTE,
         aluminum_line=AluminumLine.SERIE_35,
         min_width_cm=Decimal('40'), max_width_cm=Decimal('120'),
         min_height_cm=Decimal('40'), max_height_cm=Decimal('100'),
-        description="Sistema proyectante para ventilación, adaptable a dimensiones.",
+        description="Sistema proyectante con vidrio laminado, disponible en 6 colores.",
         bom=proyectante_bom
     )
     created_proyectante = service.create_product(proyectante_product)
-    print(f"✓ Producto creado: {created_proyectante.name} (ID: {created_proyectante.id})")
+    print(f"  ✓ {created_proyectante.name} (ID: {created_proyectante.id})")
     
-    print("✅ Inicialización completada con éxito!")
+    # === RESUMEN FINAL ===
+    print("\n📊 RESUMEN DE INICIALIZACIÓN:")
+    print(f"  🎨 Colores: {len(aluminum_colors)} colores estándar")
+    print(f"  📦 Perfiles: {len(created_profiles)} con {len(aluminum_colors)} colores = {len(created_profiles) * len(aluminum_colors)} combinaciones")
+    print(f"  🪟 Vidrios: {len(created_glass)} tipos diferentes")
+    print(f"  🔧 Herrajes: {len(created_hardware)} componentes")
+    print(f"  🧰 Consumibles: {len(created_consumables)} materiales")
+    print(f"  🏠 Productos: 3 sistemas completos con vidrio incluido")
+    print("\n✅ CATÁLOGO PROFESIONAL INICIALIZADO CON ÉXITO!")
+    print("🎯 Sistema listo para cotizaciones con colores y especificaciones técnicas")
