@@ -516,17 +516,20 @@ class MaterialCSVService:
                 # Update existing relationship
                 self.color_service.update_material_color(
                     existing_material_color.id,
-                    price_per_unit=color_price,
-                    is_available=True
+                    {
+                        "price_per_unit": color_price,
+                        "is_available": True
+                    }
                 )
                 color_message += f" (updated price: {color_price})"
             else:
                 # Create new relationship
-                self.color_service.create_material_color(
-                    material_id=material.id,
-                    color_id=color.id,
-                    price_per_unit=color_price
-                )
+                self.color_service.create_material_color({
+                    "material_id": material.id,
+                    "color_id": color.id,
+                    "price_per_unit": color_price,
+                    "is_available": True
+                })
                 color_message += f" (new price: {color_price})"
             
             return {"success": True, "color_message": color_message}

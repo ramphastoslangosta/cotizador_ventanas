@@ -306,7 +306,10 @@ function initializeCategoryFilters() {
 }
 
 async function fetchMaterialsByCategory() {
-    document.getElementById('loadingMaterials').style.display = 'block';
+    const loadingElement = document.getElementById('loadingMaterials');
+    if (loadingElement) {
+        loadingElement.style.display = 'block';
+    }
     try {
         // Intentar primero el endpoint de categorías
         let response = await fetch('/api/materials/by-category', {
@@ -330,7 +333,10 @@ async function fetchMaterialsByCategory() {
         console.warn('Error con endpoint de categorías, intentando fallback...', error);
         await fetchMaterialsLegacy();
     } finally {
-        document.getElementById('loadingMaterials').style.display = 'none';
+        const loadingElement = document.getElementById('loadingMaterials');
+        if (loadingElement) {
+            loadingElement.style.display = 'none';
+        }
     }
 }
 
@@ -968,9 +974,16 @@ async function importMaterialsCsv() {
             
             showAlert(message, result.error_count > 0 ? 'warning' : 'success');
             
-            // Close modal and refresh materials
-            bootstrap.Modal.getInstance(document.getElementById('importCsvModal')).hide();
-            fetchMaterialsByCategory();
+            // Close modal and refresh materials after it's fully closed
+            const modal = bootstrap.Modal.getInstance(document.getElementById('importCsvModal'));
+            const modalElement = document.getElementById('importCsvModal');
+            
+            // Wait for modal to fully close before refreshing
+            modalElement.addEventListener('hidden.bs.modal', function() {
+                fetchMaterialsByCategory();
+            }, { once: true });
+            
+            modal.hide();
             
         } else {
             showAlert('Error importando CSV: ' + (result.detail || 'Error desconocido'), 'danger');

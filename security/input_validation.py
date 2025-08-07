@@ -57,6 +57,31 @@ class InputValidator:
             sanitized = sanitized[:max_length]
         
         return sanitized
+
+    @staticmethod
+    def validate_text_input(text: str, min_length: int = 1, max_length: int = 1000) -> bool:
+        """
+        Validate text input length and basic safety
+        """
+        if not text:
+            return min_length == 0
+        
+        text = text.strip()
+        
+        if len(text) < min_length:
+            return False
+            
+        if len(text) > max_length:
+            return False
+            
+        return True
+
+    @staticmethod
+    def sanitize_text_input(text: str, max_length: int = 1000) -> str:
+        """
+        Alias for sanitize_text for backward compatibility
+        """
+        return InputValidator.sanitize_text(text, max_length)
     
     @staticmethod
     def validate_email(email: str) -> str:

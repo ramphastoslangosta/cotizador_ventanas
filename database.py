@@ -392,6 +392,10 @@ class DatabaseColorService:
         """Obtener color por ID"""
         return self.db.query(Color).filter(Color.id == color_id).first()
     
+    def get_color_by_code(self, color_code: str) -> Optional[Color]:
+        """Obtener color por código"""
+        return self.db.query(Color).filter(Color.code == color_code).first()
+    
     def create_color(self, color_data: dict) -> Color:
         """Crear nuevo color"""
         color = Color(**color_data)
@@ -425,6 +429,13 @@ class DatabaseColorService:
                 Color.is_active == True
             )
         return query.all()
+    
+    def get_material_color_by_ids(self, material_id: int, color_id: int) -> Optional[MaterialColor]:
+        """Obtener relación material-color por IDs"""
+        return self.db.query(MaterialColor).filter(
+            MaterialColor.material_id == material_id,
+            MaterialColor.color_id == color_id
+        ).first()
     
     def create_material_color(self, material_color_data: dict) -> MaterialColor:
         """Crear relación material-color"""
