@@ -35,7 +35,7 @@ from config import settings
 from passlib.context import CryptContext
 
 # Importar para generación de PDFs
-# from services.pdf_service import PDFQuoteService  # Temporarily disabled due to WeasyPrint system library requirements
+from services.pdf_service import PDFQuoteService
 
 # Importar modelos de empresa
 from models.company_models import CompanyResponse, CompanyCreate, CompanyUpdate
@@ -1272,26 +1272,21 @@ async def generate_quote_pdf(
             'logo_path': f"static/logos/{company.logo_filename}" if company.logo_filename else None
         }
         
-        # Crear servicio de PDF - Temporarily disabled due to WeasyPrint system library requirements
-        # pdf_service = PDFQuoteService()
-        # 
-        # # Generar PDF con información personalizada de la empresa
-        # pdf_content = pdf_service.generate_quote_pdf(quote.quote_data, company_info)
-        # 
-        # # Definir nombre del archivo
-        # filename = f"cotizacion_{quote_id:05d}.pdf"
-        # 
-        # # Retornar PDF como respuesta
+        # Crear servicio de PDF
+        pdf_service = PDFQuoteService()
         
-        # Temporary return while PDF is disabled
-        return {"message": "PDF generation temporarily disabled - WeasyPrint system libraries need to be installed"}
+        # Generar PDF con información personalizada de la empresa
+        pdf_content = pdf_service.generate_quote_pdf(quote.quote_data, company_info)
         
-        # Original PDF return - commented out until WeasyPrint is fixed
-        # return Response(
-        #     content=pdf_content,
-        #     media_type="application/pdf",
-        #     headers={"Content-Disposition": f"attachment; filename={filename}"}
-        # )
+        # Definir nombre del archivo
+        filename = f"cotizacion_{quote_id:05d}.pdf"
+        
+        # Retornar PDF como respuesta
+        return Response(
+            content=pdf_content,
+            media_type="application/pdf",
+            headers={"Content-Disposition": f"attachment; filename={filename}"}
+        )
         
     except HTTPException:
         raise

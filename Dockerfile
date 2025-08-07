@@ -17,11 +17,18 @@ ENV PIP_DISABLE_PIP_VERSION_CHECK=1
 # Crear usuario no-root para seguridad
 RUN groupadd -r appuser && useradd -r -g appuser appuser
 
-# Instalar dependencias del sistema
+# Instalar dependencias del sistema incluyendo WeasyPrint requirements
 RUN apt-get update && apt-get install -y \
     curl \
     build-essential \
     libpq-dev \
+    libcairo2 \
+    libpango-1.0-0 \
+    libpangocairo-1.0-0 \
+    libgdk-pixbuf2.0-0 \
+    libffi-dev \
+    libglib2.0-0 \
+    libgobject-2.0-0 \
     && rm -rf /var/lib/apt/lists/*
 
 # Directorio de trabajo
