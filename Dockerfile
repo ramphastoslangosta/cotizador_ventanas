@@ -22,13 +22,11 @@ RUN apt-get update && apt-get install -y \
     curl \
     build-essential \
     libpq-dev \
-    libcairo2 \
-    libpango-1.0-0 \
-    libpangocairo-1.0-0 \
-    libgdk-pixbuf2.0-0 \
+    libcairo2-dev \
+    libpango1.0-dev \
+    libgdk-pixbuf2.0-dev \
     libffi-dev \
-    libglib2.0-0 \
-    libgobject-2.0-0 \
+    shared-mime-info \
     && rm -rf /var/lib/apt/lists/*
 
 # Directorio de trabajo
