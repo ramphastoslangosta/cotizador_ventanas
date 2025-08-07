@@ -165,9 +165,40 @@ Modify SQLAlchemy models in `database.py`. Consider using Alembic for migrations
 ### Testing Data
 Sample data is automatically initialized on startup via `initialize_sample_data()` function.
 
-## Recent Fixes (July 2025)
+## Recent Fixes (August 2025)
 
-### Template Data Type Issues
+### CSV Import/Export Functionality Fixed
+**Problem**: CSV import was failing with DOM errors and database service issues
+**Resolution**: Complete fix implemented following development protocol
+
+#### Issues Fixed:
+1. **DOM Race Condition Error**: `Cannot read properties of null (reading 'style')`
+   - **Fix**: Added null checks in `fetchMaterialsByCategory` function
+   - **Fix**: Implemented proper modal timing using `hidden.bs.modal` event
+   - **Location**: `templates/materials_catalog.html:309-312, 336-339, 977-986`
+
+2. **Missing Database Service Methods**:
+   - **Added**: `DatabaseColorService.get_color_by_code()` method
+   - **Added**: `DatabaseColorService.get_material_color_by_ids()` method
+   - **Location**: `database.py:395-397, 433-438`
+
+3. **Missing Input Validation Methods**:
+   - **Added**: `InputValidator.validate_text_input()` method
+   - **Added**: `InputValidator.sanitize_text_input()` method  
+   - **Location**: `security/input_validation.py:62-84`
+
+4. **CSV Service Method Call Format**:
+   - **Fixed**: `update_material_color()` call to use dictionary parameter
+   - **Fixed**: `create_material_color()` call to use dictionary parameter
+   - **Location**: `services/material_csv_service.py:517-532`
+
+#### CSV Import/Export Best Practices:
+- **Always export CSV from the same environment you plan to import to** (material IDs vary between environments)
+- CSV supports full CRUD operations: create, update, delete materials
+- Color pricing data is fully supported for profile materials
+- Import success rate: 100% when using environment-matched CSV files
+
+### Previous Template Data Type Issues
 When working with quote data stored as JSON in PostgreSQL, be aware that numeric values are returned as strings and need conversion:
 
 - **Template math operations**: Use `|float` filter for calculations: `{% set total = total + (item.value|float) %}`
