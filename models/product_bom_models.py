@@ -47,6 +47,7 @@ class AppProduct(BaseModel):
     """Modelo para un producto terminado (ventana) con su Bill of Materials dinámico."""
     id: Optional[int] = None # ID es opcional para la creación
     name: str = Field(..., min_length=1, max_length=100)
+    code: Optional[str] = Field(None, max_length=50, description="Código estándar del producto (ej: WIN-COR-3H-001)")
     
     # Estos campos definen el "tipo" de producto y sus características base
     window_type: WindowType # Ej. CORREDIZA, FIJA, PROYECTANTE

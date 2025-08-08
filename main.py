@@ -1541,6 +1541,7 @@ async def get_materials_by_category(
             material_data = {
                 "id": material.id,
                 "name": material.name or "Sin nombre",
+                "code": material.code or "",
                 "unit": material.unit or "PZA",
                 "category": category,
                 "cost_per_unit": cost_per_unit,

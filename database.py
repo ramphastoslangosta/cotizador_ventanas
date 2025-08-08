@@ -68,6 +68,7 @@ class AppProduct(Base):
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     name = Column(Text, nullable=False)
+    code = Column(Text, nullable=True, unique=True)  # Código estándar del producto (ej: WIN-COR-3H-001)
     window_type = Column(Text, nullable=False)  # fija, corrediza, proyectante, etc.
     aluminum_line = Column(Text, nullable=False)  # nacional_serie_3, nacional_serie_35, etc.
     min_width_cm = Column(Numeric(precision=8, scale=2), nullable=False)

@@ -202,6 +202,7 @@ class ProductBOMServiceDB:
         return AppProduct(
             id=db_product.id,
             name=db_product.name,
+            code=getattr(db_product, 'code', None),
             window_type=WindowType(db_product.window_type),
             aluminum_line=AluminumLine(db_product.aluminum_line),
             min_width_cm=db_product.min_width_cm,

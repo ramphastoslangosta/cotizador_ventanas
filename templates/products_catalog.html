@@ -101,6 +101,17 @@
                                    placeholder="Ej: Ventana Corrediza 2 Hojas">
                         </div>
                         <div class="col-md-6 mb-3">
+                            <label for="productCode" class="form-label">Código del Producto</label>
+                            <input type="text" class="form-control" id="productCode" 
+                                   placeholder="Ej: WIN-COR-001" maxlength="50">
+                            <div class="form-text">
+                                Código estándar del producto. Opcional pero recomendado para estandarización.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-12 mb-3">
                             <label for="productDescription" class="form-label">Descripción (opcional)</label>
                             <input type="text" class="form-control" id="productDescription" 
                                    placeholder="Ej: Sistema corredizo estándar">
@@ -361,7 +372,8 @@ function renderProducts() {
             if (product.bom && product.bom.length > 0) {
                 bomDetails = product.bom.map(item => {
                     const material = materialsMap.get(item.material_id);
-                    return `<li>${material ? material.name : 'Material Desconocido'} (${item.quantity_formula}) - Tipo: ${item.material_type}</li>`;
+                    const materialCode = material && material.code ? ` [${material.code}]` : '';
+                    return `<li>${material ? material.name : 'Material Desconocido'}${materialCode} (${item.quantity_formula}) - Tipo: ${item.material_type}</li>`;
                 }).join('');
                 bomDetails = `<ul class="list-unstyled list-group list-group-flush small mt-2">${bomDetails}</ul>`;
             } else {
@@ -371,7 +383,10 @@ function renderProducts() {
             col.innerHTML = `
                 <div class="card h-100">
                     <div class="card-header d-flex justify-content-between align-items-center">
-                        <h6 class="mb-0">${product.name}</h6>
+                        <div class="flex-grow-1">
+                            <h6 class="mb-0" title="${product.name}">${product.name}</h6>
+                            ${product.code ? `<small class="text-primary fw-bold">${product.code}</small>` : ''}
+                        </div>
                         <span class="badge bg-primary">${formatEnumString(product.window_type)}</span>
                     </div>
                     <div class="card-body">
@@ -389,8 +404,11 @@ function renderProducts() {
                         <hr>
                         <h6>Componentes (BOM):</h6>
                         <div class="bom-section">
-                            <small class="text-muted">ID: #${product.id}</small>
                             ${bomDetails}
+                        </div>
+                        <div class="mt-2">
+                            ${product.code ? `<small class="text-primary fw-bold">Código: ${product.code}</small><br>` : ''}
+                            <small class="text-muted">ID: #${product.id}</small>
                         </div>
                     </div>
                     <div class="card-footer bg-transparent">
@@ -414,6 +432,7 @@ function renderProducts() {
 function resetProductModal() {
     document.getElementById('productForm').reset();
     document.getElementById('productId').value = '';
+    document.getElementById('productCode').value = '';
     document.getElementById('productModalTitle').innerHTML = '<i class="fas fa-plus-circle"></i> Nuevo Producto';
     document.getElementById('bomItemsContainer').innerHTML = ''; // Limpiar BOM
     document.getElementById('productGlassType').value = ''; // Ensure this is reset
@@ -435,7 +454,8 @@ function addBomItem(bomItem = {}) { // Recibe un objeto bomItem para rellenar
         allMaterials.forEach(material => {
             const option = document.createElement('option');
             option.value = material.id;
-            option.textContent = `${material.name} (${material.unit}) - $${material.cost_per_unit.toFixed(2)}`;
+            const codeDisplay = material.code ? `[${material.code}] ` : '';
+            option.textContent = `${codeDisplay}${material.name} (${material.unit}) - $${material.cost_per_unit.toFixed(2)}`;
             materialSelect.appendChild(option);
         });
     }
@@ -462,6 +482,7 @@ function editProduct(id) {
     document.getElementById('productModalTitle').innerHTML = '<i class="fas fa-edit"></i> Editar Producto';
     document.getElementById('productId').value = product.id;
     document.getElementById('productName').value = product.name;
+    document.getElementById('productCode').value = product.code || '';
     document.getElementById('productDescription').value = product.description || '';
     document.getElementById('productWindowType').value = product.window_type;
     document.getElementById('productAluminumLine').value = product.aluminum_line;
@@ -509,6 +530,7 @@ async function saveProduct() {
 
     const productData = {
         name: document.getElementById('productName').value,
+        code: document.getElementById('productCode').value || null,
         description: document.getElementById('productDescription').value || null,
         window_type: document.getElementById('productWindowType').value,
         aluminum_line: document.getElementById('productAluminumLine').value,
