@@ -274,9 +274,10 @@ class DatabaseProductService:
     def create_product(self, name: str, window_type: str, aluminum_line: str,
                       min_width_cm: Decimal, max_width_cm: Decimal,
                       min_height_cm: Decimal, max_height_cm: Decimal,
-                      bom: list, description: Optional[str] = None) -> AppProduct:
+                      bom: list, description: Optional[str] = None, code: Optional[str] = None) -> AppProduct:
         product = AppProduct(
             name=name,
+            code=code,
             window_type=window_type,
             aluminum_line=aluminum_line,
             min_width_cm=min_width_cm,

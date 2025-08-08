@@ -90,7 +90,8 @@ class ProductBOMServiceDB:
             min_height_cm=product.min_height_cm,
             max_height_cm=product.max_height_cm,
             bom=bom_json,
-            description=product.description
+            description=product.description,
+            code=product.code
         )
         return self._db_product_to_pydantic(db_product)
     
@@ -109,7 +110,8 @@ class ProductBOMServiceDB:
             min_height_cm=updated_product.min_height_cm,
             max_height_cm=updated_product.max_height_cm,
             bom=bom_json,
-            description=updated_product.description
+            description=updated_product.description,
+            code=updated_product.code
         )
         if not db_product:
             return None
