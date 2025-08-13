@@ -2,6 +2,28 @@
 
 ## [v5.0.0-RESILIENT] - August 2025
 
+### 🔥 Critical Bug Fixes
+
+#### BUG-001: /quotes 500 Internal Server Error (August 13, 2025)
+- **🚨 PRODUCTION CRITICAL ISSUE RESOLVED**
+  - **Problem**: Users experiencing HTTP 500 Internal Server Error when accessing `/quotes` endpoint
+  - **Root Cause**: Decimal dimension values in quote data causing `ValueError: invalid literal for int() with base 10: '50.1'`
+  - **Affected**: User rafa@example.com with Quote 6 containing `"height_cm": "50.1"` decimal string
+  - **Solution**: Enhanced dimension conversion to handle decimal strings in `main.py:1050-1051`
+    ```python
+    # Before (causing error)
+    "height_cm": int(item.get("height_cm", 0))
+    
+    # After (fixed)
+    "height_cm": int(float(item.get("height_cm", 0)))
+    ```
+  - **Impact**: 
+    - ✅ `/quotes` endpoint now returns 200 OK responses
+    - ✅ All users can access quotes page without errors
+    - ✅ Proper handling of decimal dimensions in quote data
+  - **Deployment**: Production verified working August 13, 2025 04:13 UTC
+  - **Commit**: `f726b89` - hotfix(BUG-001): fix decimal dimension conversion in quotes
+
 ### 🆕 New Features & Enhancements
 
 #### Product and Material Code System (August 8, 2025)
@@ -24,6 +46,17 @@
   - Updated `ProductBOMServiceDB` to handle product codes in `services/product_bom_service_db.py:205`
   - Proper code serialization and deserialization throughout application
   - Maintains backward compatibility with existing products without codes
+
+- **🔧 HOTFIX: Product Code Creation Fix** (August 8, 2025 - Evening)
+  - **Fixed Critical Issue**: Product codes entered in UI were not being saved to database
+  - **Root Cause**: `DatabaseProductService.create_product()` method missing code parameter
+  - **Resolution**: Added `code` parameter to database service layer methods
+  - **Files Updated**:
+    - `database.py:277`: Added `code: Optional[str] = None` parameter to `create_product` method
+    - `database.py:280`: Added `code=code` to AppProduct instantiation
+    - `services/product_bom_service_db.py:94`: Pass `code=product.code` in create_product call
+    - `services/product_bom_service_db.py:114`: Pass `code=updated_product.code` in update_product call
+  - **Status**: ✅ **DEPLOYED AND VERIFIED** - Product codes now save and display correctly
 
 ### 🔧 Bug Fixes & Critical Issues Resolved
 
