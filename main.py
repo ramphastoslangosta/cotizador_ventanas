@@ -999,47 +999,69 @@ async def quotes_list_page(request: Request, db: Session = Depends(get_db)):
     
     all_quotes = []
     for quote in user_quotes:
-        # Cargar datos JSON de la cotización
-        quote_data = quote.quote_data
-        items_count = len(quote_data.get("items", []))
-        
-        # Calcular área y perímetro total
-        total_area = sum(float(item.get("area_m2", 0)) for item in quote_data.get("items", []))
-        
-        simple_quote = {
-            "id": quote.id,
-            "created_at": quote.created_at,
-            "client_name": quote.client_name,
-            "client_email": quote.client_email or "",
-            "client_phone": quote.client_phone or "",
-            "total_final": float(quote.total_final),
-            "items_count": items_count,
-            "total_area": total_area,
-            "price_per_m2": float(quote.total_final) / total_area if total_area > 0 else 0,
-            "sample_items": []
-        }
-        
-        # Obtener items de muestra
-        product_bom_service = ProductBOMServiceDB(db)
-        for i, item in enumerate(quote_data.get("items", [])[:3]):
-            product_info = product_bom_service.get_product_base_info(item.get("product_bom_id"))
+        try:
+            # Cargar datos JSON de la cotización
+            quote_data = quote.quote_data or {}
+            items_count = len(quote_data.get("items", []))
             
-            if product_info:
-                item_name = product_info["name"]
-                item_type = product_info["window_type"].value
-            else:
-                item_name = f"Producto #{item.get('product_bom_id', 'N/A')}"
-                item_type = str(item.get("window_type", "Desconocido"))
+            # Calcular área y perímetro total con manejo de errores
+            total_area = 0
+            for item in quote_data.get("items", []):
+                try:
+                    area_value = item.get("area_m2", 0)
+                    if area_value is not None:
+                        total_area += float(area_value)
+                except (ValueError, TypeError):
+                    continue  # Skip invalid area values
             
-            simple_quote["sample_items"].append({
-                "window_type": item_type,
-                "name": item_name,
-                "width_cm": int(item.get("width_cm", 0)),
-                "height_cm": int(item.get("height_cm", 0))
-            })
-        
-        simple_quote["remaining_items"] = max(0, items_count - 3)
-        all_quotes.append(simple_quote)
+            simple_quote = {
+                "id": quote.id,
+                "created_at": quote.created_at,
+                "client_name": quote.client_name or "Cliente Desconocido",
+                "client_email": quote.client_email or "",
+                "client_phone": quote.client_phone or "",
+                "total_final": float(quote.total_final) if quote.total_final else 0,
+                "items_count": items_count,
+                "total_area": total_area,
+                "price_per_m2": float(quote.total_final) / total_area if total_area > 0 and quote.total_final else 0,
+                "sample_items": []
+            }
+            
+            # Obtener items de muestra con manejo de errores
+            product_bom_service = ProductBOMServiceDB(db)
+            for i, item in enumerate(quote_data.get("items", [])[:3]):
+                try:
+                    product_info = product_bom_service.get_product_base_info(item.get("product_bom_id"))
+                    
+                    if product_info:
+                        item_name = product_info["name"]
+                        # Safe access to window_type enum value
+                        try:
+                            item_type = product_info["window_type"].value
+                        except AttributeError:
+                            item_type = str(product_info["window_type"])
+                    else:
+                        item_name = f"Producto #{item.get('product_bom_id', 'N/A')}"
+                        item_type = str(item.get("window_type", "Desconocido"))
+                    
+                    simple_quote["sample_items"].append({
+                        "window_type": item_type,
+                        "name": item_name,
+                        "width_cm": int(item.get("width_cm", 0)),
+                        "height_cm": int(item.get("height_cm", 0))
+                    })
+                except Exception as item_error:
+                    # Skip problematic items but continue processing
+                    print(f"Error processing item {i} for quote {quote.id}: {item_error}")
+                    continue
+            
+            simple_quote["remaining_items"] = max(0, items_count - 3)
+            all_quotes.append(simple_quote)
+            
+        except Exception as quote_error:
+            # Skip problematic quotes but continue processing others
+            print(f"Error processing quote {quote.id}: {quote_error}")
+            continue
     
     from datetime import date
     today = date.today()

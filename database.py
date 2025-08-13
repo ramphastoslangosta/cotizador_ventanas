@@ -534,3 +534,53 @@ class DatabaseCompanyService:
         if not company:
             company = self.create_default_company(user_id)
         return company
+
+class DatabaseQuoteService:
+    """Servicio para gestión de cotizaciones en base de datos"""
+    
+    def __init__(self, db: Session):
+        self.db = db
+    
+    def get_quotes_by_user(self, user_id: uuid.UUID, limit: int = 50):
+        """Obtener cotizaciones del usuario"""
+        return self.db.query(Quote).filter(Quote.user_id == user_id).order_by(Quote.created_at.desc()).limit(limit).all()
+    
+    def get_quote_by_id(self, quote_id: int, user_id: uuid.UUID) -> Optional[Quote]:
+        """Obtener cotización específica del usuario"""
+        return self.db.query(Quote).filter(
+            Quote.id == quote_id, 
+            Quote.user_id == user_id
+        ).first()
+    
+    def create_quote(self, user_id: uuid.UUID, quote_data: dict) -> Quote:
+        """Crear nueva cotización"""
+        quote = Quote(
+            user_id=user_id,
+            client_name=quote_data.get('client_name', ''),
+            client_email=quote_data.get('client_email'),
+            client_phone=quote_data.get('client_phone'),
+            client_address=quote_data.get('client_address'),
+            total_final=quote_data.get('total_final', 0),
+            materials_subtotal=quote_data.get('materials_subtotal', 0),
+            labor_subtotal=quote_data.get('labor_subtotal', 0),
+            profit_amount=quote_data.get('profit_amount', 0),
+            indirect_costs_amount=quote_data.get('indirect_costs_amount', 0),
+            tax_amount=quote_data.get('tax_amount', 0),
+            items_count=quote_data.get('items_count', 0),
+            quote_data=quote_data.get('quote_data', {}),
+            notes=quote_data.get('notes'),
+            valid_until=quote_data.get('valid_until')
+        )
+        self.db.add(quote)
+        self.db.commit()
+        self.db.refresh(quote)
+        return quote
+    
+    def delete_quote(self, quote_id: int, user_id: uuid.UUID) -> bool:
+        """Eliminar cotización del usuario"""
+        quote = self.get_quote_by_id(quote_id, user_id)
+        if quote:
+            self.db.delete(quote)
+            self.db.commit()
+            return True
+        return False
