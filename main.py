@@ -1047,8 +1047,8 @@ async def quotes_list_page(request: Request, db: Session = Depends(get_db)):
                     simple_quote["sample_items"].append({
                         "window_type": item_type,
                         "name": item_name,
-                        "width_cm": int(item.get("width_cm", 0)),
-                        "height_cm": int(item.get("height_cm", 0))
+                        "width_cm": int(float(item.get("width_cm", 0))),
+                        "height_cm": int(float(item.get("height_cm", 0)))
                     })
                 except Exception as item_error:
                     # Skip problematic items but continue processing
