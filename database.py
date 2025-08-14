@@ -1,5 +1,5 @@
 # database.py - Configuración de SQLAlchemy para Supabase
-from sqlalchemy import create_engine, Column, Integer, BigInteger, String, Text, Numeric, Boolean, DateTime, JSON, ForeignKey, Index
+from sqlalchemy import create_engine, Column, Integer, BigInteger, String, Text, Numeric, Boolean, DateTime, JSON, ForeignKey, Index, Enum
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy.dialects.postgresql import UUID, JSONB
@@ -8,6 +8,7 @@ from typing import Optional
 import os
 from decimal import Decimal
 import uuid
+from enum import Enum as PythonEnum
 
 # Configuración de la base de datos
 from config import settings
@@ -101,6 +102,60 @@ class Quote(Base):
     notes = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     valid_until = Column(DateTime(timezone=True), nullable=True)
+
+# WorkOrder enums for QTO-001
+class WorkOrderStatus(PythonEnum):
+    PENDING = "pending"
+    MATERIALS_ORDERED = "materials_ordered"
+    MATERIALS_RECEIVED = "materials_received"
+    IN_PRODUCTION = "in_production"
+    QUALITY_CHECK = "quality_check"
+    READY_FOR_DELIVERY = "ready_for_delivery"
+    DELIVERED = "delivered"
+    CANCELLED = "cancelled"
+
+class WorkOrderPriority(PythonEnum):
+    LOW = "low"
+    NORMAL = "normal"
+    HIGH = "high"
+    URGENT = "urgent"
+
+class WorkOrder(Base):
+    __tablename__ = "work_orders"
+    
+    # Primary identification
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    order_number = Column(String(50), unique=True, nullable=False)  # WO-2025-001
+    
+    # Quote relationship
+    quote_id = Column(BigInteger, ForeignKey("quotes.id"), nullable=False)
+    user_id = Column(UUID(as_uuid=True), nullable=False, index=True)
+    
+    # Client information (copied from quote)
+    client_name = Column(Text, nullable=False)
+    client_email = Column(Text, nullable=True)
+    client_phone = Column(Text, nullable=True)
+    client_address = Column(Text, nullable=True)
+    
+    # Financial summary (copied from quote)
+    total_amount = Column(Numeric(precision=12, scale=2), nullable=False)
+    materials_cost = Column(Numeric(precision=12, scale=2), nullable=False)
+    labor_cost = Column(Numeric(precision=12, scale=2), nullable=False)
+    
+    # WorkOrder specific data
+    work_order_data = Column(JSONB, nullable=False)  # Items with material breakdown
+    
+    # Status tracking
+    status = Column(Enum(WorkOrderStatus), nullable=False, default=WorkOrderStatus.PENDING)
+    priority = Column(Enum(WorkOrderPriority), nullable=False, default=WorkOrderPriority.NORMAL)
+    
+    # Dates
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    estimated_delivery = Column(DateTime(timezone=True), nullable=True)
+    completed_at = Column(DateTime(timezone=True), nullable=True)
+    
+    # Notes and tracking
+    notes = Column(Text, nullable=True)
 
 class Company(Base):
     __tablename__ = "companies"
@@ -584,3 +639,124 @@ class DatabaseQuoteService:
             self.db.commit()
             return True
         return False
+
+class DatabaseWorkOrderService:
+    """Servicio para gestión de órdenes de trabajo (WorkOrders) - QTO-001"""
+    
+    def __init__(self, db: Session):
+        self.db = db
+    
+    def get_work_orders_by_user(self, user_id: uuid.UUID, limit: int = 50):
+        """Obtener órdenes de trabajo del usuario"""
+        return self.db.query(WorkOrder).filter(
+            WorkOrder.user_id == user_id
+        ).order_by(WorkOrder.created_at.desc()).limit(limit).all()
+    
+    def get_work_order_by_id(self, work_order_id: int, user_id: uuid.UUID) -> Optional[WorkOrder]:
+        """Obtener orden de trabajo por ID del usuario"""
+        return self.db.query(WorkOrder).filter(
+            WorkOrder.id == work_order_id,
+            WorkOrder.user_id == user_id
+        ).first()
+    
+    def get_work_order_by_number(self, order_number: str, user_id: uuid.UUID) -> Optional[WorkOrder]:
+        """Obtener orden de trabajo por número"""
+        return self.db.query(WorkOrder).filter(
+            WorkOrder.order_number == order_number,
+            WorkOrder.user_id == user_id
+        ).first()
+    
+    def create_work_order_from_quote(self, quote: Quote) -> WorkOrder:
+        """Crear orden de trabajo desde una cotización"""
+        # Generate unique work order number
+        order_number = self._generate_order_number()
+        
+        # Extract client info from quote
+        quote_data = quote.quote_data
+        client_info = quote_data.get('client', {})
+        
+        # Create work order data with material breakdown
+        work_order_data = {
+            'quote_reference': {
+                'quote_id': quote.id,
+                'quote_created_at': quote.created_at.isoformat() if quote.created_at else None,
+                'original_total': str(quote.total_final)
+            },
+            'items': quote_data.get('items', []),
+            'material_breakdown': self._extract_material_breakdown(quote_data),
+            'production_notes': '',
+            'delivery_instructions': ''
+        }
+        
+        work_order = WorkOrder(
+            order_number=order_number,
+            quote_id=quote.id,
+            user_id=quote.user_id,
+            client_name=quote.client_name,
+            client_email=quote.client_email,
+            client_phone=quote.client_phone,
+            client_address=quote.client_address,
+            total_amount=quote.total_final,
+            materials_cost=quote.materials_subtotal,
+            labor_cost=quote.labor_subtotal,
+            work_order_data=work_order_data,
+            status=WorkOrderStatus.PENDING,
+            priority=WorkOrderPriority.NORMAL
+        )
+        
+        self.db.add(work_order)
+        self.db.commit()
+        self.db.refresh(work_order)
+        return work_order
+    
+    def update_work_order_status(self, work_order_id: int, user_id: uuid.UUID, 
+                                new_status: WorkOrderStatus, notes: str = None) -> Optional[WorkOrder]:
+        """Actualizar estado de orden de trabajo"""
+        work_order = self.get_work_order_by_id(work_order_id, user_id)
+        if work_order:
+            work_order.status = new_status
+            if notes:
+                current_notes = work_order.notes or ""
+                work_order.notes = f"{current_notes}\n[{new_status.value}] {notes}".strip()
+            
+            # Auto-complete when delivered
+            if new_status == WorkOrderStatus.DELIVERED:
+                work_order.completed_at = func.now()
+            
+            self.db.commit()
+            self.db.refresh(work_order)
+        return work_order
+    
+    def _generate_order_number(self) -> str:
+        """Generar número único de orden de trabajo"""
+        from datetime import datetime
+        year = datetime.now().year
+        
+        # Count existing work orders for this year
+        count = self.db.query(WorkOrder).filter(
+            WorkOrder.order_number.like(f"WO-{year}-%")
+        ).count()
+        
+        return f"WO-{year}-{count + 1:03d}"
+    
+    def _extract_material_breakdown(self, quote_data: dict) -> list:
+        """Extraer desglose de materiales de la cotización"""
+        materials = []
+        items = quote_data.get('items', [])
+        
+        for item in items:
+            # Extract material costs from each item
+            material_entry = {
+                'item_description': f"{item.get('window_type', 'N/A')} - {item.get('width_cm')}x{item.get('height_cm')}cm",
+                'quantity': item.get('quantity', 1),
+                'profiles_cost': item.get('total_profiles_cost', '0.00'),
+                'glass_cost': item.get('total_glass_cost', '0.00'),
+                'hardware_cost': item.get('total_hardware_cost', '0.00'),
+                'consumables_cost': item.get('total_consumables_cost', '0.00'),
+                'labor_cost': item.get('labor_cost', '0.00'),
+                'product_bom_id': item.get('product_bom_id'),
+                'product_bom_name': item.get('product_bom_name', 'N/A')
+            }
+            materials.append(material_entry)
+        
+        return materials
