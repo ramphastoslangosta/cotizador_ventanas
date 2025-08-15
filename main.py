@@ -722,24 +722,30 @@ async def register_page(request: Request):
 @app.get("/dashboard", response_class=HTMLResponse)
 async def dashboard_page(request: Request, db: Session = Depends(get_db)):
     try:
-        user = await get_current_user_from_cookie(request, db)
-        if not user:
-            return RedirectResponse(url="/login")
+        # Test basic HTML response first
+        return HTMLResponse(
+            content="<html><body><h1>Dashboard Test</h1><p>Basic response working</p></body></html>",
+            status_code=200
+        )
         
-        # Store user ID as string for error monitoring
-        request.state.user_id = str(user.id)
+        # user = await get_current_user_from_cookie(request, db)
+        # if not user:
+        #     return RedirectResponse(url="/login")
         
-        # TEMPORARY: Skip statistics to isolate the issue
-        # quote_service = DatabaseQuoteService(db)
-        # stats = quote_service.get_quote_statistics(user.id)
+        # # Store user ID as string for error monitoring
+        # request.state.user_id = str(user.id)
         
-        return templates.TemplateResponse("dashboard.html", {
-            "request": request,
-            "title": "Dashboard",
-            "user": user,
-            "recent_quotes": [],  # Empty list temporarily
-            "total_quotes": 0     # Zero temporarily
-        })
+        # # TEMPORARY: Skip statistics to isolate the issue
+        # # quote_service = DatabaseQuoteService(db)
+        # # stats = quote_service.get_quote_statistics(user.id)
+        
+        # return templates.TemplateResponse("dashboard.html", {
+        #     "request": request,
+        #     "title": "Dashboard",
+        #     "user": user,
+        #     "recent_quotes": [],  # Empty list temporarily
+        #     "total_quotes": 0     # Zero temporarily
+        # })
     except Exception as e:
         # Return basic HTML without template rendering
         return HTMLResponse(
