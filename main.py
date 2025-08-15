@@ -745,7 +745,23 @@ async def register_page(request: Request):
         "title": "Crear Cuenta"
     })
 
-@app.get("/test-auth")
+@app.get("/health-check")
+async def health_check():
+    """Simple health check without dependencies"""
+    return {"status": "ok", "message": "App is running"}
+
+@app.get("/test-db")
+async def test_db(db: Session = Depends(get_db)):
+    """Test database connection only"""
+    try:
+        # Simple query to test DB
+        from sqlalchemy import text
+        result = db.execute(text("SELECT 1 as test")).fetchone()
+        return {"status": "db_ok", "result": result[0] if result else None}
+    except Exception as e:
+        return {"status": "db_error", "error": str(e), "type": type(e).__name__}
+
+@app.get("/test-auth")  
 async def test_auth(request: Request, db: Session = Depends(get_db)):
     """Test route to verify authentication is working"""
     try:
