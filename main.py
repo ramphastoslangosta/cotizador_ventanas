@@ -729,29 +729,23 @@ async def dashboard_page(request: Request, db: Session = Depends(get_db)):
         # Store user ID as string for error monitoring
         request.state.user_id = str(user.id)
         
-        # Obtener estadísticas de cotizaciones del usuario
-        quote_service = DatabaseQuoteService(db)
-        stats = quote_service.get_quote_statistics(user.id)
+        # TEMPORARY: Skip statistics to isolate the issue
+        # quote_service = DatabaseQuoteService(db)
+        # stats = quote_service.get_quote_statistics(user.id)
         
         return templates.TemplateResponse("dashboard.html", {
             "request": request,
             "title": "Dashboard",
             "user": user,
-            "recent_quotes": stats["recent_quotes"],
-            "total_quotes": stats["total_quotes"]
+            "recent_quotes": [],  # Empty list temporarily
+            "total_quotes": 0     # Zero temporarily
         })
     except Exception as e:
-        # Log the specific dashboard error without causing serialization issues
-        logger = get_logger()
-        logger.error(f"Dashboard error: {str(e)}", 
-                    user_id=str(getattr(request.state, 'user_id', 'unknown')),
-                    endpoint="/dashboard")
-        # Return a simple error page instead of raising
-        return templates.TemplateResponse("login.html", {
-            "request": request,
-            "title": "Error de Sesión",
-            "error": "Error interno. Por favor, inicia sesión nuevamente."
-        })
+        # Return basic HTML without template rendering
+        return HTMLResponse(
+            content=f"<html><body><h1>Dashboard Error</h1><p>Error: {str(e)}</p><a href='/login'>Back to Login</a></body></html>",
+            status_code=500
+        )
 
 # === RUTAS DE FORMULARIOS ===
 @app.post("/web/login")
