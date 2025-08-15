@@ -217,6 +217,8 @@ async def error_handling_middleware(request: Request, call_next):
         
         # Record for monitoring
         user_id = getattr(request.state, 'user_id', None)
+        # Convert UUID to string for JSON serialization
+        user_id_str = str(user_id) if user_id is not None else None
         record_error_for_monitoring(
             error_detail=ErrorDetail(
                 code=e.code,
@@ -230,7 +232,7 @@ async def error_handling_middleware(request: Request, call_next):
                 request_id=request_id
             ),
             endpoint=url,
-            user_id=user_id,
+            user_id=user_id_str,
             ip_address=ip_address
         )
         
@@ -286,10 +288,12 @@ async def error_handling_middleware(request: Request, call_next):
         
         # Record for monitoring
         user_id = getattr(request.state, 'user_id', None)
+        # Convert UUID to string for JSON serialization
+        user_id_str = str(user_id) if user_id is not None else None
         record_error_for_monitoring(
             error_detail=error_detail.error,
             endpoint=url,
-            user_id=user_id,
+            user_id=user_id_str,
             ip_address=ip_address
         )
         
