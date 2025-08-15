@@ -1,0 +1,528 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <h2>
+                <i class="fas fa-tools text-success"></i>
+                {{ work_order.order_number }}
+            </h2>
+            <div>
+                <span class="badge bg-{{ 'success' if work_order.status == 'delivered' else 'primary' if work_order.status == 'in_production' else 'warning' if work_order.status == 'materials_ordered' else 'secondary' }} fs-6">
+                    {{ work_order.status|replace('_', ' ')|title }}
+                </span>
+                <span class="badge bg-{{ 'danger' if work_order.priority == 'urgent' else 'warning' if work_order.priority == 'high' else 'secondary' }} ms-2">
+                    {{ work_order.priority|title }}
+                </span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Client and Basic Info -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-user text-primary"></i>
+                    Información del Cliente
+                </h5>
+            </div>
+            <div class="card-body">
+                <h6 class="fw-bold">{{ work_order.client_name }}</h6>
+                {% if work_order.client_email %}
+                <p class="mb-1">
+                    <i class="fas fa-envelope text-muted"></i>
+                    {{ work_order.client_email }}
+                </p>
+                {% endif %}
+                {% if work_order.client_phone %}
+                <p class="mb-1">
+                    <i class="fas fa-phone text-muted"></i>
+                    {{ work_order.client_phone }}
+                </p>
+                {% endif %}
+                {% if work_order.client_address %}
+                <p class="mb-0">
+                    <i class="fas fa-map-marker-alt text-muted"></i>
+                    {{ work_order.client_address }}
+                </p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-info-circle text-success"></i>
+                    Información de la Orden
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row mb-2">
+                    <div class="col-6">
+                        <small class="text-muted">Fecha de Creación:</small>
+                        <div class="fw-bold">{{ work_order.created_at.strftime('%d/%m/%Y') }}</div>
+                    </div>
+                    <div class="col-6">
+                        <small class="text-muted">Cotización Original:</small>
+                        <div class="fw-bold">
+                            <a href="/quotes/{{ work_order.quote_id }}" class="text-decoration-none">
+                                #{{ work_order.quote_id }}
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-6">
+                        <small class="text-muted">Entrega Estimada:</small>
+                        <div class="fw-bold">
+                            {% if work_order.estimated_delivery %}
+                                {{ work_order.estimated_delivery.strftime('%d/%m/%Y') }}
+                            {% else %}
+                                No definida
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <small class="text-muted">Estado Actual:</small>
+                        <div class="fw-bold">{{ work_order.status|replace('_', ' ')|title }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Financial Summary -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-calculator text-warning"></i>
+                    Resumen Financiero
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-md-3">
+                        <h4 class="text-info">${{ "%.2f"|format(work_order.materials_cost) }}</h4>
+                        <small class="text-muted">Materiales</small>
+                    </div>
+                    <div class="col-md-3">
+                        <h4 class="text-warning">${{ "%.2f"|format(work_order.labor_cost) }}</h4>
+                        <small class="text-muted">Mano de Obra</small>
+                    </div>
+                    <div class="col-md-3">
+                        <h4 class="text-secondary">${{ "%.2f"|format(work_order.total_amount - work_order.materials_cost - work_order.labor_cost) }}</h4>
+                        <small class="text-muted">Otros Costos</small>
+                    </div>
+                    <div class="col-md-3">
+                        <h4 class="text-success">${{ "%.2f"|format(work_order.total_amount) }}</h4>
+                        <small class="text-muted">Total</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Material Breakdown -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="fas fa-list text-primary"></i>
+                    Desglose de Materiales
+                </h5>
+                <button class="btn btn-sm btn-outline-primary" onclick="toggleMaterialDetails()">
+                    <i class="fas fa-eye" id="toggleIcon"></i> <span id="toggleText">Ver Detalle</span>
+                </button>
+            </div>
+            <div class="card-body">
+                <div id="materialSummary">
+                    {% if work_order.work_order_data.material_breakdown %}
+                    <div class="row">
+                        {% for material in work_order.work_order_data.material_breakdown %}
+                        <div class="col-md-6 mb-3">
+                            <div class="border rounded p-3">
+                                <h6 class="text-primary">{{ material.item_description }}</h6>
+                                <div class="row">
+                                    <div class="col-6">
+                                        <small class="text-muted">Cantidad:</small>
+                                        <div class="fw-bold">{{ material.quantity }}</div>
+                                    </div>
+                                    <div class="col-6">
+                                        <small class="text-muted">Producto:</small>
+                                        <div class="fw-bold">{{ material.product_bom_name }}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <p class="text-muted">No hay desglose de materiales disponible.</p>
+                    {% endif %}
+                </div>
+                
+                <div id="materialDetails" style="display: none;">
+                    {% if work_order.work_order_data.material_breakdown %}
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Item</th>
+                                    <th>Cantidad</th>
+                                    <th>Perfiles</th>
+                                    <th>Vidrio</th>
+                                    <th>Herrajes</th>
+                                    <th>Consumibles</th>
+                                    <th>Mano de Obra</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for material in work_order.work_order_data.material_breakdown %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ material.item_description }}</strong><br>
+                                        <small class="text-muted">{{ material.product_bom_name }}</small>
+                                    </td>
+                                    <td>{{ material.quantity }}</td>
+                                    <td>${{ material.profiles_cost }}</td>
+                                    <td>${{ material.glass_cost }}</td>
+                                    <td>${{ material.hardware_cost }}</td>
+                                    <td>${{ material.consumables_cost }}</td>
+                                    <td>${{ material.labor_cost }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Production Notes and Instructions -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-clipboard text-info"></i>
+                    Notas de Producción
+                </h5>
+            </div>
+            <div class="card-body">
+                <div id="productionNotesDisplay">
+                    {{ work_order.work_order_data.production_notes or 'Sin notas de producción' }}
+                </div>
+                <button class="btn btn-sm btn-outline-primary mt-2" onclick="editProductionNotes()">
+                    <i class="fas fa-edit"></i> Editar
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-truck text-warning"></i>
+                    Instrucciones de Entrega
+                </h5>
+            </div>
+            <div class="card-body">
+                <div id="deliveryInstructionsDisplay">
+                    {{ work_order.work_order_data.delivery_instructions or 'Sin instrucciones de entrega' }}
+                </div>
+                <button class="btn btn-sm btn-outline-primary mt-2" onclick="editDeliveryInstructions()">
+                    <i class="fas fa-edit"></i> Editar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Status History -->
+{% if work_order.notes %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-history text-secondary"></i>
+                    Historial de Estados
+                </h5>
+            </div>
+            <div class="card-body">
+                <pre class="mb-0">{{ work_order.notes }}</pre>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Action Buttons -->
+<div class="row mt-4">
+    <div class="col-12 text-center">
+        <button class="btn btn-warning me-2" onclick="openStatusModal()">
+            <i class="fas fa-edit"></i> Cambiar Estado
+        </button>
+        <button class="btn btn-info me-2" onclick="setPriority()">
+            <i class="fas fa-flag"></i> Cambiar Prioridad
+        </button>
+        <button class="btn btn-success me-2" onclick="printWorkOrder()">
+            <i class="fas fa-print"></i> Imprimir
+        </button>
+        <a href="/work-orders" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Volver a Órdenes
+        </a>
+    </div>
+</div>
+
+<!-- Status Update Modal -->
+<div class="modal fade" id="statusUpdateModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Actualizar Estado</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="statusUpdateForm">
+                    <div class="mb-3">
+                        <label for="newStatus" class="form-label">Nuevo Estado</label>
+                        <select class="form-select" id="newStatus" name="newStatus" required>
+                            <option value="pending">Pendiente</option>
+                            <option value="materials_ordered">Materiales Pedidos</option>
+                            <option value="materials_received">Materiales Recibidos</option>
+                            <option value="in_production">En Producción</option>
+                            <option value="quality_check">Control de Calidad</option>
+                            <option value="ready_for_delivery">Listo para Entrega</option>
+                            <option value="delivered">Entregado</option>
+                            <option value="cancelled">Cancelado</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="statusNotes" class="form-label">Notas (opcional)</label>
+                        <textarea class="form-control" id="statusNotes" name="statusNotes" rows="3" 
+                                  placeholder="Agregar notas sobre el cambio de estado..."></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="updateWorkOrderStatus()">
+                    <i class="fas fa-save"></i> Actualizar Estado
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const workOrderId = {{ work_order.id }};
+const currentStatus = '{{ work_order.status }}';
+
+function showAlert(message, type = 'info') {
+    const alertsContainer = document.getElementById('alerts-container') || document.body;
+    const alert = document.createElement('div');
+    alert.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
+    alert.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+    alert.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    alertsContainer.appendChild(alert);
+    
+    setTimeout(() => {
+        if (alert.parentNode) {
+            alert.parentNode.removeChild(alert);
+        }
+    }, 5000);
+}
+
+function toggleMaterialDetails() {
+    const summary = document.getElementById('materialSummary');
+    const details = document.getElementById('materialDetails');
+    const icon = document.getElementById('toggleIcon');
+    const text = document.getElementById('toggleText');
+    
+    if (details.style.display === 'none') {
+        summary.style.display = 'none';
+        details.style.display = 'block';
+        icon.className = 'fas fa-eye-slash';
+        text.textContent = 'Ver Resumen';
+    } else {
+        summary.style.display = 'block';
+        details.style.display = 'none';
+        icon.className = 'fas fa-eye';
+        text.textContent = 'Ver Detalle';
+    }
+}
+
+function openStatusModal() {
+    document.getElementById('newStatus').value = currentStatus;
+    document.getElementById('statusNotes').value = '';
+    
+    const modal = new bootstrap.Modal(document.getElementById('statusUpdateModal'));
+    modal.show();
+}
+
+async function updateWorkOrderStatus() {
+    const newStatus = document.getElementById('newStatus').value;
+    const notes = document.getElementById('statusNotes').value;
+    
+    try {
+        const response = await fetch(`/api/work-orders/${workOrderId}/status`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            credentials: 'include',
+            body: JSON.stringify({
+                status: newStatus,
+                notes: notes
+            })
+        });
+        
+        if (!response.ok) {
+            throw new Error('Error al actualizar el estado');
+        }
+        
+        // Cerrar modal
+        const modal = bootstrap.Modal.getInstance(document.getElementById('statusUpdateModal'));
+        modal.hide();
+        
+        // Recargar página para mostrar cambios
+        showAlert('Estado actualizado correctamente', 'success');
+        setTimeout(() => {
+            window.location.reload();
+        }, 1500);
+        
+    } catch (error) {
+        console.error('Error:', error);
+        showAlert('Error al actualizar el estado: ' + error.message, 'danger');
+    }
+}
+
+function setPriority() {
+    const priorities = ['low', 'normal', 'high', 'urgent'];
+    const priorityNames = ['Baja', 'Normal', 'Alta', 'Urgente'];
+    
+    const currentPriority = '{{ work_order.priority }}';
+    const currentIndex = priorities.indexOf(currentPriority);
+    const currentName = priorityNames[currentIndex];
+    
+    const newPriority = prompt(`Prioridad actual: ${currentName}\n\nIngresa nueva prioridad:\n1. Baja\n2. Normal\n3. Alta\n4. Urgente\n\nIngresa número (1-4):`);
+    
+    if (newPriority && newPriority >= 1 && newPriority <= 4) {
+        const selectedPriority = priorities[newPriority - 1];
+        updatePriority(selectedPriority);
+    }
+}
+
+async function updatePriority(priority) {
+    try {
+        const response = await fetch(`/api/work-orders/${workOrderId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            credentials: 'include',
+            body: JSON.stringify({
+                priority: priority
+            })
+        });
+        
+        if (!response.ok) {
+            throw new Error('Error al actualizar la prioridad');
+        }
+        
+        showAlert('Prioridad actualizada correctamente', 'success');
+        setTimeout(() => {
+            window.location.reload();
+        }, 1500);
+        
+    } catch (error) {
+        console.error('Error:', error);
+        showAlert('Error al actualizar la prioridad: ' + error.message, 'danger');
+    }
+}
+
+function editProductionNotes() {
+    const currentNotes = document.getElementById('productionNotesDisplay').textContent;
+    const newNotes = prompt('Notas de Producción:', currentNotes);
+    
+    if (newNotes !== null) {
+        updateWorkOrderField('production_notes', newNotes);
+    }
+}
+
+function editDeliveryInstructions() {
+    const currentInstructions = document.getElementById('deliveryInstructionsDisplay').textContent;
+    const newInstructions = prompt('Instrucciones de Entrega:', currentInstructions);
+    
+    if (newInstructions !== null) {
+        updateWorkOrderField('delivery_instructions', newInstructions);
+    }
+}
+
+async function updateWorkOrderField(field, value) {
+    try {
+        const response = await fetch(`/api/work-orders/${workOrderId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            credentials: 'include',
+            body: JSON.stringify({
+                [field]: value
+            })
+        });
+        
+        if (!response.ok) {
+            throw new Error('Error al actualizar el campo');
+        }
+        
+        showAlert('Campo actualizado correctamente', 'success');
+        setTimeout(() => {
+            window.location.reload();
+        }, 1500);
+        
+    } catch (error) {
+        console.error('Error:', error);
+        showAlert('Error al actualizar: ' + error.message, 'danger');
+    }
+}
+
+function printWorkOrder() {
+    window.print();
+}
+</script>
+
+<style>
+@media print {
+    .btn, .modal, .nav, .navbar {
+        display: none !important;
+    }
+    
+    .card {
+        border: 1px solid #ddd !important;
+        box-shadow: none !important;
+    }
+}
+</style>
+{% endblock %}

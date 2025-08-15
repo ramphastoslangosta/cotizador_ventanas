@@ -1,0 +1,394 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <h2>
+                <i class="fas fa-tools text-success"></i>
+                Órdenes de Trabajo
+            </h2>
+            <div class="btn-group">
+                <a href="/quotes" class="btn btn-outline-primary">
+                    <i class="fas fa-file-invoice"></i> Ver Cotizaciones
+                </a>
+                <a href="/quotes/new" class="btn btn-primary">
+                    <i class="fas fa-plus"></i> Nueva Cotización
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Filtros y búsqueda -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="input-group">
+            <span class="input-group-text">
+                <i class="fas fa-search"></i>
+            </span>
+            <input type="text" id="searchInput" class="form-control" 
+                   placeholder="Buscar por número, cliente..." 
+                   onkeyup="filterWorkOrders()">
+        </div>
+    </div>
+    <div class="col-md-3">
+        <select id="statusFilter" class="form-select" onchange="filterWorkOrders()">
+            <option value="">Todos los estados</option>
+            <option value="pending">Pendiente</option>
+            <option value="materials_ordered">Materiales Pedidos</option>
+            <option value="materials_received">Materiales Recibidos</option>
+            <option value="in_production">En Producción</option>
+            <option value="quality_check">Control de Calidad</option>
+            <option value="ready_for_delivery">Listo para Entrega</option>
+            <option value="delivered">Entregado</option>
+        </select>
+    </div>
+    <div class="col-md-3">
+        <select id="priorityFilter" class="form-select" onchange="filterWorkOrders()">
+            <option value="">Todas las prioridades</option>
+            <option value="low">Baja</option>
+            <option value="normal">Normal</option>
+            <option value="high">Alta</option>
+            <option value="urgent">Urgente</option>
+        </select>
+    </div>
+</div>
+
+<!-- Lista de órdenes de trabajo -->
+<div class="row" id="workOrdersContainer">
+    <div class="col-12" id="workOrdersList">
+        <!-- Las órdenes se cargan aquí vía JavaScript -->
+        <div class="text-center py-5" id="loadingIndicator">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Cargando...</span>
+            </div>
+            <p class="text-muted mt-2">Cargando órdenes de trabajo...</p>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para actualizar estado -->
+<div class="modal fade" id="statusUpdateModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Actualizar Estado</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="statusUpdateForm">
+                    <input type="hidden" id="workOrderId" name="workOrderId">
+                    <div class="mb-3">
+                        <label for="newStatus" class="form-label">Nuevo Estado</label>
+                        <select class="form-select" id="newStatus" name="newStatus" required>
+                            <option value="pending">Pendiente</option>
+                            <option value="materials_ordered">Materiales Pedidos</option>
+                            <option value="materials_received">Materiales Recibidos</option>
+                            <option value="in_production">En Producción</option>
+                            <option value="quality_check">Control de Calidad</option>
+                            <option value="ready_for_delivery">Listo para Entrega</option>
+                            <option value="delivered">Entregado</option>
+                            <option value="cancelled">Cancelado</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="statusNotes" class="form-label">Notas (opcional)</label>
+                        <textarea class="form-control" id="statusNotes" name="statusNotes" rows="3" 
+                                  placeholder="Agregar notas sobre el cambio de estado..."></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="updateWorkOrderStatus()">
+                    <i class="fas fa-save"></i> Actualizar Estado
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let allWorkOrders = [];
+
+// Cargar órdenes al cargar la página
+document.addEventListener('DOMContentLoaded', function() {
+    loadWorkOrders();
+});
+
+function showAlert(message, type = 'info') {
+    const alertsContainer = document.getElementById('alerts-container') || document.body;
+    const alert = document.createElement('div');
+    alert.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
+    alert.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+    alert.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    alertsContainer.appendChild(alert);
+    
+    setTimeout(() => {
+        if (alert.parentNode) {
+            alert.parentNode.removeChild(alert);
+        }
+    }, 5000);
+}
+
+async function loadWorkOrders() {
+    try {
+        const response = await fetch('/api/work-orders');
+        if (!response.ok) {
+            throw new Error('Error al cargar órdenes de trabajo');
+        }
+        
+        allWorkOrders = await response.json();
+        displayWorkOrders(allWorkOrders);
+        
+    } catch (error) {
+        console.error('Error:', error);
+        document.getElementById('loadingIndicator').innerHTML = `
+            <div class="text-center py-5">
+                <i class="fas fa-exclamation-triangle fa-3x text-warning mb-3"></i>
+                <h4 class="text-muted">Error al cargar órdenes</h4>
+                <p class="text-muted">${error.message}</p>
+                <button class="btn btn-primary" onclick="loadWorkOrders()">
+                    <i class="fas fa-sync"></i> Reintentar
+                </button>
+            </div>
+        `;
+    }
+}
+
+function displayWorkOrders(workOrders) {
+    const container = document.getElementById('workOrdersList');
+    const loadingIndicator = document.getElementById('loadingIndicator');
+    
+    if (loadingIndicator) {
+        loadingIndicator.style.display = 'none';
+    }
+    
+    if (!workOrders || workOrders.length === 0) {
+        container.innerHTML = `
+            <div class="text-center py-5">
+                <i class="fas fa-tools fa-5x text-muted mb-4"></i>
+                <h4 class="text-muted">No hay órdenes de trabajo</h4>
+                <p class="text-muted">Las órdenes aparecerán aquí cuando conviertas cotizaciones</p>
+                <a href="/quotes" class="btn btn-primary">
+                    <i class="fas fa-file-invoice"></i> Ver Cotizaciones
+                </a>
+            </div>
+        `;
+        return;
+    }
+    
+    container.innerHTML = `
+        <div class="row">
+            ${workOrders.map(workOrder => createWorkOrderCard(workOrder)).join('')}
+        </div>
+    `;
+}
+
+function createWorkOrderCard(workOrder) {
+    const statusBadge = getStatusBadge(workOrder.status);
+    const priorityBadge = getPriorityBadge(workOrder.priority);
+    const createdDate = new Date(workOrder.created_at).toLocaleDateString('es-ES');
+    const estimatedDelivery = workOrder.estimated_delivery ? 
+        new Date(workOrder.estimated_delivery).toLocaleDateString('es-ES') : 'No definida';
+    
+    return `
+        <div class="col-lg-6 mb-4 work-order-item" data-work-order-id="${workOrder.id}">
+            <div class="card work-order-card h-100">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <div class="d-flex align-items-center">
+                        <h6 class="mb-0">
+                            <i class="fas fa-tools text-success me-2"></i>
+                            ${workOrder.order_number}
+                        </h6>
+                        ${priorityBadge}
+                    </div>
+                    <small class="text-muted">${createdDate}</small>
+                </div>
+                
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-8">
+                            <h6 class="text-primary mb-1">${workOrder.client_name}</h6>
+                            <div class="mb-2">
+                                ${statusBadge}
+                            </div>
+                        </div>
+                        <div class="col-4 text-end">
+                            <h5 class="text-success mb-0">$${parseFloat(workOrder.total_amount).toFixed(2)}</h5>
+                            <small class="text-muted">Total</small>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="row text-center">
+                            <div class="col-6">
+                                <div class="fw-bold text-info">$${parseFloat(workOrder.materials_cost).toFixed(2)}</div>
+                                <small class="text-muted">Materiales</small>
+                            </div>
+                            <div class="col-6">
+                                <div class="fw-bold text-warning">$${parseFloat(workOrder.labor_cost).toFixed(2)}</div>
+                                <small class="text-muted">Mano de Obra</small>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <small class="text-muted">Entrega estimada:</small><br>
+                        <span class="fw-bold">${estimatedDelivery}</span>
+                    </div>
+                </div>
+                
+                <div class="card-footer bg-transparent">
+                    <div class="btn-group w-100">
+                        <a href="/work-orders/${workOrder.id}" class="btn btn-outline-primary btn-sm">
+                            <i class="fas fa-eye"></i> Ver
+                        </a>
+                        <button class="btn btn-outline-warning btn-sm" onclick="openStatusModal(${workOrder.id}, '${workOrder.status}')">
+                            <i class="fas fa-edit"></i> Estado
+                        </button>
+                        <button class="btn btn-outline-info btn-sm" onclick="printWorkOrder(${workOrder.id})">
+                            <i class="fas fa-print"></i> Imprimir
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function getStatusBadge(status) {
+    const statusConfig = {
+        'pending': { text: 'Pendiente', class: 'bg-secondary' },
+        'materials_ordered': { text: 'Materiales Pedidos', class: 'bg-warning' },
+        'materials_received': { text: 'Materiales Recibidos', class: 'bg-info' },
+        'in_production': { text: 'En Producción', class: 'bg-primary' },
+        'quality_check': { text: 'Control de Calidad', class: 'bg-dark' },
+        'ready_for_delivery': { text: 'Listo para Entrega', class: 'bg-success' },
+        'delivered': { text: 'Entregado', class: 'bg-success' },
+        'cancelled': { text: 'Cancelado', class: 'bg-danger' }
+    };
+    
+    const config = statusConfig[status] || { text: status, class: 'bg-secondary' };
+    return `<span class="badge ${config.class}">${config.text}</span>`;
+}
+
+function getPriorityBadge(priority) {
+    const priorityConfig = {
+        'low': { text: 'Baja', class: 'bg-light text-dark' },
+        'normal': { text: 'Normal', class: 'bg-secondary' },
+        'high': { text: 'Alta', class: 'bg-warning' },
+        'urgent': { text: 'Urgente', class: 'bg-danger' }
+    };
+    
+    const config = priorityConfig[priority] || { text: priority, class: 'bg-secondary' };
+    return `<span class="badge ${config.class} ms-2">${config.text}</span>`;
+}
+
+function filterWorkOrders() {
+    const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+    const statusFilter = document.getElementById('statusFilter').value;
+    const priorityFilter = document.getElementById('priorityFilter').value;
+    
+    const filtered = allWorkOrders.filter(workOrder => {
+        const matchesSearch = workOrder.order_number.toLowerCase().includes(searchTerm) ||
+                              workOrder.client_name.toLowerCase().includes(searchTerm);
+        const matchesStatus = !statusFilter || workOrder.status === statusFilter;
+        const matchesPriority = !priorityFilter || workOrder.priority === priorityFilter;
+        
+        return matchesSearch && matchesStatus && matchesPriority;
+    });
+    
+    displayWorkOrders(filtered);
+}
+
+function openStatusModal(workOrderId, currentStatus) {
+    document.getElementById('workOrderId').value = workOrderId;
+    document.getElementById('newStatus').value = currentStatus;
+    document.getElementById('statusNotes').value = '';
+    
+    const modal = new bootstrap.Modal(document.getElementById('statusUpdateModal'));
+    modal.show();
+}
+
+async function updateWorkOrderStatus() {
+    const workOrderId = document.getElementById('workOrderId').value;
+    const newStatus = document.getElementById('newStatus').value;
+    const notes = document.getElementById('statusNotes').value;
+    
+    try {
+        const response = await fetch(`/api/work-orders/${workOrderId}/status`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                status: newStatus,
+                notes: notes
+            })
+        });
+        
+        if (!response.ok) {
+            throw new Error('Error al actualizar el estado');
+        }
+        
+        const updatedWorkOrder = await response.json();
+        
+        // Cerrar modal
+        const modal = bootstrap.Modal.getInstance(document.getElementById('statusUpdateModal'));
+        modal.hide();
+        
+        // Recargar órdenes
+        await loadWorkOrders();
+        
+        showAlert(`Estado actualizado a: ${getStatusBadge(newStatus)}`, 'success');
+        
+    } catch (error) {
+        console.error('Error:', error);
+        showAlert('Error al actualizar el estado: ' + error.message, 'danger');
+    }
+}
+
+function printWorkOrder(workOrderId) {
+    showAlert('Función de impresión en desarrollo...', 'info');
+}
+</script>
+
+<style>
+.work-order-card {
+    transition: transform 0.2s;
+    border-left: 4px solid #28a745;
+}
+
+.work-order-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.work-order-item[data-status="delivered"] .work-order-card {
+    border-left-color: #28a745;
+}
+
+.work-order-item[data-status="cancelled"] .work-order-card {
+    border-left-color: #dc3545;
+}
+
+.work-order-item[data-status="in_production"] .work-order-card {
+    border-left-color: #007bff;
+}
+
+.work-order-item[data-status="pending"] .work-order-card {
+    border-left-color: #6c757d;
+}
+
+.badge {
+    font-size: 0.75em;
+}
+</style>
+{% endblock %}
