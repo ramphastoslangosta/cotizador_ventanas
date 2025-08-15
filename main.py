@@ -18,6 +18,7 @@ import os
 import shutil
 import time
 import math
+import json
 
 # Importaciones de base de datos
 from sqlalchemy.orm import Session
@@ -215,26 +216,34 @@ async def error_handling_middleware(request: Request, call_next):
             ip_address=ip_address
         )
         
-        # Record for monitoring
+        # Record for monitoring with safe serialization
         user_id = getattr(request.state, 'user_id', None)
         # Convert UUID to string for JSON serialization
         user_id_str = str(user_id) if user_id is not None else None
-        record_error_for_monitoring(
-            error_detail=ErrorDetail(
-                code=e.code,
-                category=e.category,
-                severity=e.severity,
-                message_es=e.message_es,
-                message_en=e.message_en,
-                technical_details=e.technical_details,
-                user_action=e.user_action,
-                timestamp=e.timestamp,
-                request_id=request_id
-            ),
-            endpoint=url,
-            user_id=user_id_str,
-            ip_address=ip_address
-        )
+        
+        # Safely serialize error details to prevent UUID serialization errors
+        safe_error_detail = safe_serialize_for_json(ErrorDetail(
+            code=e.code,
+            category=e.category,
+            severity=e.severity,
+            message_es=e.message_es,
+            message_en=e.message_en,
+            technical_details=safe_serialize_for_json(e.technical_details),
+            user_action=e.user_action,
+            timestamp=e.timestamp,
+            request_id=request_id
+        ))
+        
+        try:
+            record_error_for_monitoring(
+                error_detail=safe_error_detail,
+                endpoint=url,
+                user_id=user_id_str,
+                ip_address=ip_address
+            )
+        except Exception as monitor_error:
+            # If error monitoring fails, just log it without breaking the app
+            logger.warning(f"Error monitoring failed: {str(monitor_error)}")
         
         # Return HTTP error response
         raise error_manager.create_http_exception(e)
@@ -286,16 +295,23 @@ async def error_handling_middleware(request: Request, call_next):
             ip_address=ip_address
         )
         
-        # Record for monitoring
+        # Record for monitoring with safe serialization
         user_id = getattr(request.state, 'user_id', None)
         # Convert UUID to string for JSON serialization
         user_id_str = str(user_id) if user_id is not None else None
-        record_error_for_monitoring(
-            error_detail=error_detail.error,
-            endpoint=url,
-            user_id=user_id_str,
-            ip_address=ip_address
-        )
+        
+        try:
+            # Safely serialize error details to prevent UUID serialization errors
+            safe_error_detail = safe_serialize_for_json(error_detail.error)
+            record_error_for_monitoring(
+                error_detail=safe_error_detail,
+                endpoint=url,
+                user_id=user_id_str,
+                ip_address=ip_address
+            )
+        except Exception as monitor_error:
+            # If error monitoring fails, just log it without breaking the app
+            logger.warning(f"Error monitoring failed: {str(monitor_error)}")
         
         # Return internal server error
         raise HTTPException(
@@ -365,6 +381,27 @@ from models.quote_models import (
 )
 
 # === FUNCIONES AUXILIARES ===
+def safe_serialize_for_json(obj):
+    """
+    Recursively convert UUID objects to strings for JSON serialization
+    This prevents UUID serialization errors in error monitoring and logging
+    """
+    if isinstance(obj, uuid.UUID):
+        return str(obj)
+    elif isinstance(obj, dict):
+        return {k: safe_serialize_for_json(v) for k, v in obj.items()}
+    elif isinstance(obj, (list, tuple)):
+        return [safe_serialize_for_json(item) for item in obj]
+    elif hasattr(obj, '__dict__'):
+        # Handle objects with attributes
+        result = {}
+        for k, v in obj.__dict__.items():
+            if not k.startswith('_'):  # Skip private attributes
+                result[k] = safe_serialize_for_json(v)
+        return result
+    else:
+        return obj
+
 def hash_password(password: str) -> str:
     return pwd_context.hash(password)
 
