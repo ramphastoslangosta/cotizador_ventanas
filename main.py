@@ -2049,6 +2049,43 @@ async def update_work_order(
         raise HTTPException(status_code=500, detail=f"Error updating work order: {str(e)}")
 
 
+# ===== WORK ORDERS HTML ROUTES =====
+
+@app.get("/work-orders")
+async def work_orders_page(request: Request, current_user: User = Depends(get_current_user_flexible)):
+    """Work orders list page"""
+    return templates.TemplateResponse(
+        "work_orders_list.html",
+        {"request": request, "user": current_user}
+    )
+
+@app.get("/work-orders/{work_order_id}")
+async def work_order_detail_page(
+    request: Request, 
+    work_order_id: int,
+    current_user: User = Depends(get_current_user_flexible),
+    db: Session = Depends(get_db)
+):
+    """Work order detail page"""
+    try:
+        work_order_service = DatabaseWorkOrderService(db)
+        work_order = work_order_service.get_work_order_by_id(work_order_id, current_user.id)
+        
+        if not work_order:
+            raise HTTPException(status_code=404, detail="Work order not found")
+        
+        return templates.TemplateResponse(
+            "work_order_detail.html",
+            {"request": request, "user": current_user, "work_order": work_order}
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger = get_logger()
+        logger.error(f"Error loading work order detail: {str(e)}")
+        raise HTTPException(status_code=500, detail="Error loading work order")
+
+
 if __name__ == "__main__":
     import uvicorn
     print("🚀 Sistema con Base de Datos PostgreSQL Iniciado")
