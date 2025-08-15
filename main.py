@@ -682,21 +682,37 @@ async def register_page(request: Request):
 
 @app.get("/dashboard", response_class=HTMLResponse)
 async def dashboard_page(request: Request, db: Session = Depends(get_db)):
-    user = await get_current_user_from_cookie(request, db)
-    if not user:
-        return RedirectResponse(url="/login")
-    
-    # Obtener estadísticas de cotizaciones del usuario
-    quote_service = DatabaseQuoteService(db)
-    stats = quote_service.get_quote_statistics(user.id)
-    
-    return templates.TemplateResponse("dashboard.html", {
-        "request": request,
-        "title": "Dashboard",
-        "user": user,
-        "recent_quotes": stats["recent_quotes"],
-        "total_quotes": stats["total_quotes"]
-    })
+    try:
+        user = await get_current_user_from_cookie(request, db)
+        if not user:
+            return RedirectResponse(url="/login")
+        
+        # Store user ID as string for error monitoring
+        request.state.user_id = str(user.id)
+        
+        # Obtener estadísticas de cotizaciones del usuario
+        quote_service = DatabaseQuoteService(db)
+        stats = quote_service.get_quote_statistics(user.id)
+        
+        return templates.TemplateResponse("dashboard.html", {
+            "request": request,
+            "title": "Dashboard",
+            "user": user,
+            "recent_quotes": stats["recent_quotes"],
+            "total_quotes": stats["total_quotes"]
+        })
+    except Exception as e:
+        # Log the specific dashboard error without causing serialization issues
+        logger = get_logger()
+        logger.error(f"Dashboard error: {str(e)}", 
+                    user_id=str(getattr(request.state, 'user_id', 'unknown')),
+                    endpoint="/dashboard")
+        # Return a simple error page instead of raising
+        return templates.TemplateResponse("login.html", {
+            "request": request,
+            "title": "Error de Sesión",
+            "error": "Error interno. Por favor, inicia sesión nuevamente."
+        })
 
 # === RUTAS DE FORMULARIOS ===
 @app.post("/web/login")
