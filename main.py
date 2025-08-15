@@ -735,6 +735,23 @@ async def register_page(request: Request):
         "title": "Crear Cuenta"
     })
 
+@app.get("/test-auth")
+async def test_auth(request: Request, db: Session = Depends(get_db)):
+    """Test route to verify authentication is working"""
+    try:
+        user = await get_current_user_from_cookie(request, db)
+        if not user:
+            return {"status": "no_user", "message": "No authenticated user"}
+        
+        return {
+            "status": "success", 
+            "user_id": str(user.id),
+            "user_email": user.email,
+            "request_state_user_id": str(getattr(request.state, 'user_id', 'not_set'))
+        }
+    except Exception as e:
+        return {"status": "error", "error": str(e), "type": type(e).__name__}
+
 @app.get("/dashboard", response_class=HTMLResponse)
 async def dashboard_page(request: Request, db: Session = Depends(get_db)):
     user = await get_current_user_from_cookie(request, db)
