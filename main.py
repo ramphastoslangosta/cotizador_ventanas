@@ -234,16 +234,17 @@ async def error_handling_middleware(request: Request, call_next):
             request_id=request_id
         ))
         
-        try:
-            record_error_for_monitoring(
-                error_detail=safe_error_detail,
-                endpoint=url,
-                user_id=user_id_str,
-                ip_address=ip_address
-            )
-        except Exception as monitor_error:
-            # If error monitoring fails, just log it without breaking the app
-            logger.warning(f"Error monitoring failed: {str(monitor_error)}")
+        # Temporarily disable error monitoring to isolate UUID serialization issue
+        # try:
+        #     record_error_for_monitoring(
+        #         error_detail=safe_error_detail,
+        #         endpoint=url,
+        #         user_id=user_id_str,
+        #         ip_address=ip_address
+        #     )
+        # except Exception as monitor_error:
+        #     # If error monitoring fails, just log it without breaking the app
+        #     logger.warning(f"Error monitoring failed: {str(monitor_error)}")
         
         # Return HTTP error response
         raise error_manager.create_http_exception(e)
@@ -300,18 +301,19 @@ async def error_handling_middleware(request: Request, call_next):
         # Convert UUID to string for JSON serialization
         user_id_str = str(user_id) if user_id is not None else None
         
-        try:
-            # Safely serialize error details to prevent UUID serialization errors
-            safe_error_detail = safe_serialize_for_json(error_detail.error)
-            record_error_for_monitoring(
-                error_detail=safe_error_detail,
-                endpoint=url,
-                user_id=user_id_str,
-                ip_address=ip_address
-            )
-        except Exception as monitor_error:
-            # If error monitoring fails, just log it without breaking the app
-            logger.warning(f"Error monitoring failed: {str(monitor_error)}")
+        # Temporarily disable error monitoring to isolate UUID serialization issue
+        # try:
+        #     # Safely serialize error details to prevent UUID serialization errors
+        #     safe_error_detail = safe_serialize_for_json(error_detail.error)
+        #     record_error_for_monitoring(
+        #         error_detail=safe_error_detail,
+        #         endpoint=url,
+        #         user_id=user_id_str,
+        #         ip_address=ip_address
+        #     )
+        # except Exception as monitor_error:
+        #     # If error monitoring fails, just log it without breaking the app
+        #     logger.warning(f"Error monitoring failed: {str(monitor_error)}")
         
         # Return internal server error
         raise HTTPException(
