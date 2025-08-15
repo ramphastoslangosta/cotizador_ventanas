@@ -271,6 +271,22 @@ async def error_handling_middleware(request: Request, call_next):
         # Handle unexpected errors
         response_time = (time.time() - start_time) * 1000
         
+        # Log the exact exception details for debugging
+        logger.critical(
+            f"UNEXPECTED EXCEPTION IN MIDDLEWARE: {type(e).__name__}: {str(e)}",
+            request_id=request_id,
+            method=method,
+            endpoint=url,
+            exception_type=type(e).__name__,
+            exception_message=str(e),
+            response_time=response_time,
+            ip_address=ip_address
+        )
+        
+        # Log the full traceback
+        import traceback
+        logger.critical(f"Full traceback: {traceback.format_exc()}")
+        
         # Create error detail for unexpected errors
         error_detail = error_manager.handle_error(
             error=e,
@@ -721,12 +737,18 @@ async def register_page(request: Request):
 
 @app.get("/dashboard", response_class=HTMLResponse)
 async def dashboard_page(request: Request):
+    logger = get_logger()
+    logger.info("Dashboard route accessed - starting execution")
+    
     try:
         # Test basic HTML response first
-        return HTMLResponse(
+        logger.info("About to return basic HTML response")
+        response = HTMLResponse(
             content="<html><body><h1>Dashboard Test</h1><p>Basic response working</p></body></html>",
             status_code=200
         )
+        logger.info("Basic HTML response created successfully")
+        return response
         
         # user = await get_current_user_from_cookie(request, db)
         # if not user:
