@@ -149,8 +149,7 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 app.include_router(health_router, prefix="/api")
 
 # === MILESTONE 1.2: Global Error Handler ===
-# TEMPORARILY DISABLE to see actual errors
-# @app.middleware("http")
+@app.middleware("http")
 async def error_handling_middleware(request: Request, call_next):
     """Global error handling middleware with monitoring integration"""
     
@@ -271,17 +270,6 @@ async def error_handling_middleware(request: Request, call_next):
         # Handle unexpected errors
         response_time = (time.time() - start_time) * 1000
         
-        # EMERGENCY DEBUGGING: Print to stdout/stderr to bypass logging issues
-        import traceback
-        print(f"EMERGENCY DEBUG - EXCEPTION IN MIDDLEWARE:")
-        print(f"Exception type: {type(e).__name__}")
-        print(f"Exception message: {str(e)}")
-        print(f"Request URL: {url}")
-        print(f"Request method: {method}")
-        print(f"Full traceback:")
-        print(traceback.format_exc())
-        print("END EMERGENCY DEBUG")
-        
         # Log the exact exception details for debugging
         logger.critical(
             f"UNEXPECTED EXCEPTION IN MIDDLEWARE: {type(e).__name__}: {str(e)}",
@@ -295,6 +283,7 @@ async def error_handling_middleware(request: Request, call_next):
         )
         
         # Log the full traceback
+        import traceback
         logger.critical(f"Full traceback: {traceback.format_exc()}")
         
         # Create error detail for unexpected errors
@@ -785,16 +774,17 @@ async def dashboard_page(request: Request, db: Session = Depends(get_db)):
     if not user:
         return RedirectResponse(url="/login")
     
-    # Obtener estadísticas de cotizaciones del usuario
+    # Obtener cotizaciones del usuario usando método disponible
     quote_service = DatabaseQuoteService(db)
-    stats = quote_service.get_quote_statistics(user.id)
+    recent_quotes = quote_service.get_quotes_by_user(user.id, limit=5)
+    total_quotes = len(quote_service.get_quotes_by_user(user.id, limit=1000))  # Simple count
     
     return templates.TemplateResponse("dashboard.html", {
         "request": request,
         "title": "Dashboard",
         "user": user,
-        "recent_quotes": stats["recent_quotes"],
-        "total_quotes": stats["total_quotes"]
+        "recent_quotes": recent_quotes,
+        "total_quotes": total_quotes
     })
 
 # === RUTAS DE FORMULARIOS ===
