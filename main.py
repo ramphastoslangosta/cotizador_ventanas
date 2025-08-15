@@ -149,7 +149,8 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 app.include_router(health_router, prefix="/api")
 
 # === MILESTONE 1.2: Global Error Handler ===
-@app.middleware("http")
+# TEMPORARILY DISABLE to see actual errors
+# @app.middleware("http")
 async def error_handling_middleware(request: Request, call_next):
     """Global error handling middleware with monitoring integration"""
     
