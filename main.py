@@ -720,7 +720,7 @@ async def register_page(request: Request):
     })
 
 @app.get("/dashboard", response_class=HTMLResponse)
-async def dashboard_page(request: Request, db: Session = Depends(get_db)):
+async def dashboard_page(request: Request):
     try:
         # Test basic HTML response first
         return HTMLResponse(
