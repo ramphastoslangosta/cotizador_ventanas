@@ -1117,6 +1117,41 @@ async def view_quote_page(request: Request, quote_id: int, db: Session = Depends
         "notes": quote.notes
     })
 
+# === RUTAS PARA WORK ORDERS - QTO-001 ===
+@app.get("/work-orders", response_class=HTMLResponse)
+async def work_orders_list_page(request: Request, db: Session = Depends(get_db)):
+    """Work orders list page - QTO-001"""
+    user = await get_current_user_from_cookie(request, db)
+    if not user:
+        return RedirectResponse(url="/login")
+    
+    return templates.TemplateResponse("work_orders_list.html", {
+        "request": request,
+        "title": "Órdenes de Trabajo",
+        "user": user
+    })
+
+@app.get("/work-orders/{work_order_id}", response_class=HTMLResponse)
+async def work_order_detail_page(request: Request, work_order_id: int, db: Session = Depends(get_db)):
+    """Work order detail page - QTO-001"""
+    user = await get_current_user_from_cookie(request, db)
+    if not user:
+        return RedirectResponse(url="/login")
+    
+    # Get work order details
+    work_order_service = DatabaseWorkOrderService(db)
+    work_order = work_order_service.get_work_order_by_id(work_order_id, user.id)
+    
+    if not work_order:
+        raise HTTPException(status_code=404, detail="Orden de trabajo no encontrada")
+    
+    return templates.TemplateResponse("work_order_detail.html", {
+        "request": request,
+        "title": f"Orden de Trabajo {work_order.order_number}",
+        "user": user,
+        "work_order": work_order
+    })
+
 # === RUTAS API PARA MATERIALES Y PRODUCTOS ===
 @app.get("/api/materials", response_model=List[AppMaterial])
 async def get_all_app_materials(current_user: User = Depends(get_current_user_flexible), db: Session = Depends(get_db)):
