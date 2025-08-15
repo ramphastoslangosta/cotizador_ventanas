@@ -48,6 +48,9 @@ cd "/Users/rafaellang/Library/Mobile Documents/com~apple~CloudDocs/Proyectos/cot
 - [ ] Verify database model compatibility
 - [ ] Check for security implications
 - [ ] Validate business logic
+- [ ] **NEW: Verify all called methods exist in their respective classes**
+- [ ] **NEW: Test all affected routes, not just new feature routes**
+- [ ] **NEW: Verify UUID objects are converted to strings before JSON serialization**
 
 ### **Step 3: Enhanced Git Workflow**
 
@@ -766,6 +769,23 @@ git log --oneline -50 | grep -oE '\((.*?)\):' | sort | uniq -c | sort -rn
 
 ## 🚨 **Emergency Procedures**
 
+### **Production Issue Debugging Protocol:**
+```bash
+# 1. FIRST: Identify if error handling is masking the real issue
+ssh root@159.65.174.94 'cd /home/ventanas/app && docker-compose -f docker-compose.beta.yml logs app --tail=50'
+
+# 2. If seeing complex middleware errors, temporarily disable error middleware
+# Comment out @app.middleware("http") decorator in main.py
+# Redeploy to see actual underlying error
+
+# 3. Test component isolation
+curl http://159.65.174.94:8000/  # Test basic routes
+curl -b cookies.txt http://159.65.174.94:8000/[endpoint]  # Test with auth
+
+# 4. Check for method existence issues
+# Look for AttributeError in logs indicating missing methods
+```
+
 ### **Rollback Process:**
 ```bash
 # If deployment fails, quick rollback
@@ -898,6 +918,75 @@ Tasks marked with `Fernando-Beta-Testing` source represent real user feedback an
 2. Consider data dependencies and relationships
 3. Test initialization logic
 4. Deploy and re-initialize if needed
+
+---
+
+## 🛡️ **Production Safeguards (Added After August 15, 2025 Incident)**
+
+### **Method Existence Verification**
+Before calling any service method in production code, verify it exists:
+
+```python
+# BAD: Assume method exists
+stats = quote_service.get_quote_statistics(user.id)  # Causes AttributeError if missing
+
+# GOOD: Verify method exists or use known methods
+if hasattr(quote_service, 'get_quote_statistics'):
+    stats = quote_service.get_quote_statistics(user.id)
+else:
+    # Use alternative approach with verified methods
+    recent_quotes = quote_service.get_quotes_by_user(user.id, limit=5)
+    total_quotes = len(quote_service.get_quotes_by_user(user.id, limit=1000))
+    stats = {"recent_quotes": recent_quotes, "total_quotes": total_quotes}
+```
+
+### **UUID Serialization Safety**
+Always convert UUID objects to strings before storage or serialization:
+
+```python
+# BAD: Store UUID object (causes JSON serialization errors)
+request.state.user_id = user.id  # UUID object
+
+# GOOD: Convert to string
+request.state.user_id = str(user.id)  # String representation
+```
+
+### **Error Handling Best Practices**
+Preserve original error information while adding safeguards:
+
+```python
+try:
+    result = some_operation()
+except Exception as e:
+    # Log original error for debugging
+    logger.error(f"Operation failed: {type(e).__name__}: {str(e)}")
+    logger.debug(f"Full traceback: {traceback.format_exc()}")
+    
+    # Handle gracefully without losing error details
+    if isinstance(e, AttributeError) and "has no attribute" in str(e):
+        logger.critical(f"MISSING METHOD DETECTED: {str(e)}")
+        # Implement fallback or raise more descriptive error
+    
+    raise  # Re-raise with context preserved
+```
+
+### **Route Testing Checklist**
+For every deployment that affects existing routes:
+
+```bash
+# Test basic functionality
+curl http://159.65.174.94:8000/ 
+
+# Test authenticated routes
+curl -b cookies.txt http://159.65.174.94:8000/dashboard
+curl -b cookies.txt http://159.65.174.94:8000/quotes
+
+# Test API endpoints
+curl -b cookies.txt http://159.65.174.94:8000/api/materials
+
+# Check for errors in logs
+ssh root@159.65.174.94 'cd /home/ventanas/app && docker-compose -f docker-compose.beta.yml logs app --tail=20'
+```
 
 ---
 

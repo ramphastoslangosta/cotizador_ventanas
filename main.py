@@ -735,38 +735,6 @@ async def register_page(request: Request):
         "title": "Crear Cuenta"
     })
 
-@app.get("/health-check")
-async def health_check():
-    """Simple health check without dependencies"""
-    return {"status": "ok", "message": "App is running"}
-
-@app.get("/test-db")
-async def test_db(db: Session = Depends(get_db)):
-    """Test database connection only"""
-    try:
-        # Simple query to test DB
-        from sqlalchemy import text
-        result = db.execute(text("SELECT 1 as test")).fetchone()
-        return {"status": "db_ok", "result": result[0] if result else None}
-    except Exception as e:
-        return {"status": "db_error", "error": str(e), "type": type(e).__name__}
-
-@app.get("/test-auth")  
-async def test_auth(request: Request, db: Session = Depends(get_db)):
-    """Test route to verify authentication is working"""
-    try:
-        user = await get_current_user_from_cookie(request, db)
-        if not user:
-            return {"status": "no_user", "message": "No authenticated user"}
-        
-        return {
-            "status": "success", 
-            "user_id": str(user.id),
-            "user_email": user.email,
-            "request_state_user_id": str(getattr(request.state, 'user_id', 'not_set'))
-        }
-    except Exception as e:
-        return {"status": "error", "error": str(e), "type": type(e).__name__}
 
 @app.get("/dashboard", response_class=HTMLResponse)
 async def dashboard_page(request: Request, db: Session = Depends(get_db)):
