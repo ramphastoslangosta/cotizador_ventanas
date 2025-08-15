@@ -234,17 +234,16 @@ async def error_handling_middleware(request: Request, call_next):
             request_id=request_id
         ))
         
-        # Temporarily disable error monitoring to isolate UUID serialization issue
-        # try:
-        #     record_error_for_monitoring(
-        #         error_detail=safe_error_detail,
-        #         endpoint=url,
-        #         user_id=user_id_str,
-        #         ip_address=ip_address
-        #     )
-        # except Exception as monitor_error:
-        #     # If error monitoring fails, just log it without breaking the app
-        #     logger.warning(f"Error monitoring failed: {str(monitor_error)}")
+        try:
+            record_error_for_monitoring(
+                error_detail=safe_error_detail,
+                endpoint=url,
+                user_id=user_id_str,
+                ip_address=ip_address
+            )
+        except Exception as monitor_error:
+            # If error monitoring fails, just log it without breaking the app
+            logger.warning(f"Error monitoring failed: {str(monitor_error)}")
         
         # Return HTTP error response
         raise error_manager.create_http_exception(e)
@@ -317,19 +316,18 @@ async def error_handling_middleware(request: Request, call_next):
         # Convert UUID to string for JSON serialization
         user_id_str = str(user_id) if user_id is not None else None
         
-        # Temporarily disable error monitoring to isolate UUID serialization issue
-        # try:
-        #     # Safely serialize error details to prevent UUID serialization errors
-        #     safe_error_detail = safe_serialize_for_json(error_detail.error)
-        #     record_error_for_monitoring(
-        #         error_detail=safe_error_detail,
-        #         endpoint=url,
-        #         user_id=user_id_str,
-        #         ip_address=ip_address
-        #     )
-        # except Exception as monitor_error:
-        #     # If error monitoring fails, just log it without breaking the app
-        #     logger.warning(f"Error monitoring failed: {str(monitor_error)}")
+        try:
+            # Safely serialize error details to prevent UUID serialization errors
+            safe_error_detail = safe_serialize_for_json(error_detail.error)
+            record_error_for_monitoring(
+                error_detail=safe_error_detail,
+                endpoint=url,
+                user_id=user_id_str,
+                ip_address=ip_address
+            )
+        except Exception as monitor_error:
+            # If error monitoring fails, just log it without breaking the app
+            logger.warning(f"Error monitoring failed: {str(monitor_error)}")
         
         # Return internal server error
         raise HTTPException(
@@ -459,7 +457,8 @@ async def get_current_user_flexible(request: Request, db: Session = Depends(get_
             raise create_auth_error("UNAUTHORIZED_ACCESS")
         
         # Store user ID in request state for logging
-        request.state.user_id = user.id
+        # CRITICAL FIX: Always store user_id as string to prevent UUID serialization errors
+        request.state.user_id = str(user.id)
         
         return user
         
@@ -515,7 +514,8 @@ async def get_current_user_from_cookie(request: Request, db: Session = Depends(g
         
         user = user_service.get_user_by_id(session.user_id)
         if user and request.state:
-            request.state.user_id = user.id
+            # CRITICAL FIX: Always store user_id as string to prevent UUID serialization errors
+            request.state.user_id = str(user.id)
             
         return user
         
@@ -736,44 +736,22 @@ async def register_page(request: Request):
     })
 
 @app.get("/dashboard", response_class=HTMLResponse)
-async def dashboard_page(request: Request):
-    logger = get_logger()
-    logger.info("Dashboard route accessed - starting execution")
+async def dashboard_page(request: Request, db: Session = Depends(get_db)):
+    user = await get_current_user_from_cookie(request, db)
+    if not user:
+        return RedirectResponse(url="/login")
     
-    try:
-        # Test basic HTML response first
-        logger.info("About to return basic HTML response")
-        response = HTMLResponse(
-            content="<html><body><h1>Dashboard Test</h1><p>Basic response working</p></body></html>",
-            status_code=200
-        )
-        logger.info("Basic HTML response created successfully")
-        return response
-        
-        # user = await get_current_user_from_cookie(request, db)
-        # if not user:
-        #     return RedirectResponse(url="/login")
-        
-        # # Store user ID as string for error monitoring
-        # request.state.user_id = str(user.id)
-        
-        # # TEMPORARY: Skip statistics to isolate the issue
-        # # quote_service = DatabaseQuoteService(db)
-        # # stats = quote_service.get_quote_statistics(user.id)
-        
-        # return templates.TemplateResponse("dashboard.html", {
-        #     "request": request,
-        #     "title": "Dashboard",
-        #     "user": user,
-        #     "recent_quotes": [],  # Empty list temporarily
-        #     "total_quotes": 0     # Zero temporarily
-        # })
-    except Exception as e:
-        # Return basic HTML without template rendering
-        return HTMLResponse(
-            content=f"<html><body><h1>Dashboard Error</h1><p>Error: {str(e)}</p><a href='/login'>Back to Login</a></body></html>",
-            status_code=500
-        )
+    # Obtener estadísticas de cotizaciones del usuario
+    quote_service = DatabaseQuoteService(db)
+    stats = quote_service.get_quote_statistics(user.id)
+    
+    return templates.TemplateResponse("dashboard.html", {
+        "request": request,
+        "title": "Dashboard",
+        "user": user,
+        "recent_quotes": stats["recent_quotes"],
+        "total_quotes": stats["total_quotes"]
+    })
 
 # === RUTAS DE FORMULARIOS ===
 @app.post("/web/login")
