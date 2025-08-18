@@ -2050,6 +2050,11 @@ async def update_work_order(
 
 
 # === RUTAS PARA WORK ORDERS - QTO-001 ===
+@app.get("/work-orders-test")
+async def work_orders_test():
+    """Simple test route"""
+    return {"message": "Work orders test route working"}
+
 @app.get("/work-orders", response_class=HTMLResponse)
 async def work_orders_list_page(request: Request, db: Session = Depends(get_db)):
     """Work orders list page - QTO-001"""
