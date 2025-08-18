@@ -1219,32 +1219,49 @@ async def view_quote_page(request: Request, quote_id: int, db: Session = Depends
 @app.get("/quotes/{quote_id}/edit", response_class=HTMLResponse)
 async def edit_quote_page(request: Request, quote_id: int, db: Session = Depends(get_db)):
     """Página para editar cotización existente"""
-    user = await get_current_user_from_cookie(request, db)
-    if not user:
-        return RedirectResponse(url="/login")
-    
-    # Verificar que la cotización existe y pertenece al usuario
-    quote_service = DatabaseQuoteService(db)
-    quote = quote_service.get_quote_by_id(quote_id, user.id)
-    
-    if not quote:
-        raise HTTPException(status_code=404, detail="Cotización no encontrada")
-    
-    # Obtener datos necesarios para el formulario
-    product_bom_service = ProductBOMServiceDB(db)
-    products = product_bom_service.get_all_products()
-    
-    return templates.TemplateResponse("edit_quote.html", {
-        "request": request,
-        "title": f"Editar Cotización #{quote.id}",
-        "user": user,
-        "quote_id": quote.id,
-        "quote": quote,
-        "products": products,
-        "glass_types": [gt.value for gt in GlassType],
-        "window_types": [wt.value for wt in WindowType],
-        "aluminum_lines": [al.value for al in AluminumLine]
-    })
+    try:
+        user = await get_current_user_from_cookie(request, db)
+        if not user:
+            return RedirectResponse(url="/login")
+        
+        # Verificar que la cotización existe y pertenece al usuario
+        quote_service = DatabaseQuoteService(db)
+        quote = quote_service.get_quote_by_id(quote_id, user.id)
+        
+        if not quote:
+            raise HTTPException(status_code=404, detail="Cotización no encontrada")
+        
+        # Obtener datos necesarios para el formulario
+        product_bom_service = ProductBOMServiceDB(db)
+        products = product_bom_service.get_all_products()
+        
+        # Convert products to simple list to avoid serialization issues
+        products_list = []
+        for product in products:
+            products_list.append({
+                "id": product.id,
+                "name": product.name,
+                "window_type": product.window_type.value if hasattr(product.window_type, 'value') else str(product.window_type),
+                "aluminum_line": product.aluminum_line.value if hasattr(product.aluminum_line, 'value') else str(product.aluminum_line)
+            })
+        
+        return templates.TemplateResponse("edit_quote.html", {
+            "request": request,
+            "title": f"Editar Cotización #{quote.id}",
+            "user": user,
+            "quote_id": quote.id,
+            "quote": quote,
+            "products": products_list,
+            "glass_types": [gt.value for gt in GlassType],
+            "window_types": [wt.value for wt in WindowType],
+            "aluminum_lines": [al.value for al in AluminumLine]
+        })
+        
+    except Exception as e:
+        import traceback
+        error_detail = f"Error en página de edición: {str(e)}\n{traceback.format_exc()}"
+        print(error_detail)
+        raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
 
 # === RUTAS API PARA MATERIALES Y PRODUCTOS ===
 @app.get("/api/materials", response_model=List[AppMaterial])
