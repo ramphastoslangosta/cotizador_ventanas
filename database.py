@@ -146,8 +146,8 @@ class WorkOrder(Base):
     work_order_data = Column(JSONB, nullable=False)  # Items with material breakdown
     
     # Status tracking
-    status = Column(Enum(WorkOrderStatus), nullable=False, default=WorkOrderStatus.PENDING)
-    priority = Column(Enum(WorkOrderPriority), nullable=False, default=WorkOrderPriority.NORMAL)
+    status = Column(Enum(WorkOrderStatus, values_callable=lambda obj: [e.value for e in obj]), nullable=False, default=WorkOrderStatus.PENDING)
+    priority = Column(Enum(WorkOrderPriority, values_callable=lambda obj: [e.value for e in obj]), nullable=False, default=WorkOrderPriority.NORMAL)
     
     # Dates
     created_at = Column(DateTime(timezone=True), server_default=func.now())
