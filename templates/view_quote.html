@@ -222,6 +222,9 @@
         <button class="btn btn-success me-2" onclick="generatePDF()">
             <i class="fas fa-file-pdf"></i> Generar PDF
         </button>
+        <button class="btn btn-warning me-2" onclick="convertToWorkOrder()">
+            <i class="bi bi-tools"></i> Convertir a Orden de Trabajo
+        </button>
         <a href="/dashboard" class="btn btn-secondary">
             <i class="fas fa-arrow-left"></i> Volver al Dashboard
         </a>
@@ -282,6 +285,61 @@ async function generatePDF() {
     } finally {
         // Restaurar el botón
         const button = document.querySelector('button[onclick="generatePDF()"]');
+        if (button) {
+            button.innerHTML = originalText;
+            button.disabled = false;
+        }
+    }
+}
+
+async function convertToWorkOrder() {
+    try {
+        // Obtener el ID de la cotización desde la URL
+        const urlParts = window.location.pathname.split('/');
+        const quoteId = urlParts[urlParts.length - 1];
+        
+        // Mostrar mensaje de confirmación
+        if (!confirm('¿Estás seguro de que deseas convertir esta cotización en una orden de trabajo?')) {
+            return;
+        }
+        
+        // Mostrar mensaje de carga
+        const button = document.querySelector('button[onclick="convertToWorkOrder()"]');
+        const originalText = '<i class="bi bi-tools"></i> Convertir a Orden de Trabajo';
+        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Convirtiendo...';
+        button.disabled = true;
+        
+        // Hacer la petición para convertir la cotización
+        const response = await fetch('/api/work-orders/from-quote', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            credentials: 'include',
+            body: JSON.stringify({
+                quote_id: parseInt(quoteId),
+                priority: 'normal'
+            })
+        });
+        
+        if (response.ok) {
+            const workOrder = await response.json();
+            showAlert(`¡Orden de trabajo ${workOrder.order_number} creada exitosamente!`, 'success');
+            
+            // Opcional: redirigir a la orden de trabajo creada
+            setTimeout(() => {
+                window.location.href = `/work-orders/${workOrder.id}`;
+            }, 2000);
+        } else {
+            const errorData = await response.json();
+            showAlert('Error al crear la orden de trabajo: ' + (errorData.detail || 'Error del servidor'), 'danger');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        showAlert('Error de conexión al crear la orden de trabajo', 'danger');
+    } finally {
+        // Restaurar el botón
+        const button = document.querySelector('button[onclick="convertToWorkOrder()"]');
         if (button) {
             button.innerHTML = originalText;
             button.disabled = false;
