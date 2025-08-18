@@ -141,6 +141,11 @@ app = FastAPI(
     lifespan=lifespan
 )
 
+# DEBUG: Test route right after app creation
+@app.get("/debug-early-route")
+def debug_early_route():
+    return {"message": "Early route works - app is functioning"}
+
 # Configurar templates y archivos estáticos
 templates = Jinja2Templates(directory="templates")
 app.mount("/static", StaticFiles(directory="static"), name="static")
