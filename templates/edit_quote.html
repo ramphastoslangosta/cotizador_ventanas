@@ -1,0 +1,503 @@
+{% extends "base.html" %}
+
+{% block title %}Editar Cotización #{{ quote_id }} - {{ super() }}{% endblock %}
+
+{% block content %}
+<div id="alert-container"></div>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h1 class="h3 text-primary">
+            <i class="fas fa-edit"></i>
+            Editar Cotización #{{ quote_id }}
+        </h1>
+        <p class="text-muted">Modifica los datos de la cotización. Los cambios recalcularán automáticamente los totales.</p>
+    </div>
+    <div>
+        <a href="/quotes/{{ quote_id }}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i>
+            Volver a la Cotización
+        </a>
+    </div>
+</div>
+
+<!-- Loading Spinner -->
+<div id="loading-spinner" class="text-center my-5">
+    <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Cargando datos...</span>
+    </div>
+    <p class="mt-2 text-muted">Cargando datos de la cotización...</p>
+</div>
+
+<!-- Edit Form (initially hidden) -->
+<form id="editQuoteForm" style="display: none;">
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">
+                <i class="bi bi-person"></i>
+                Información del Cliente
+            </h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="client_name" class="form-label">Nombre del Cliente *</label>
+                    <input type="text" class="form-control" id="client_name" required>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="client_email" class="form-label">Email</label>
+                    <input type="email" class="form-control" id="client_email">
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="client_phone" class="form-label">Teléfono</label>
+                    <input type="tel" class="form-control" id="client_phone">
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="client_address" class="form-label">Dirección</label>
+                    <input type="text" class="form-control" id="client_address">
+                </div>
+            </div>
+            <div class="text-end">
+                <button type="button" class="btn btn-outline-primary" onclick="updateClientInfo()">
+                    <i class="fas fa-save"></i> Actualizar Cliente
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">
+                <i class="bi bi-list-ul"></i>
+                Elementos de la Cotización
+            </h5>
+            <button type="button" class="btn btn-sm btn-primary" onclick="addNewItem()">
+                <i class="bi bi-plus-circle"></i> Agregar Elemento
+            </button>
+        </div>
+        <div class="card-body">
+            <div id="items-container">
+                <!-- Quote items will be loaded here dynamically -->
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">
+                <i class="bi bi-gear"></i>
+                Configuración de Costos
+            </h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <label for="profit_margin" class="form-label">Margen de Utilidad (%)</label>
+                    <input type="number" class="form-control" id="profit_margin" 
+                           min="0" max="100" step="0.01" value="25">
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label for="indirect_costs_rate" class="form-label">Gastos Indirectos (%)</label>
+                    <input type="number" class="form-control" id="indirect_costs_rate" 
+                           min="0" max="100" step="0.01" value="15">
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label for="tax_rate" class="form-label">IVA (%)</label>
+                    <input type="number" class="form-control" id="tax_rate" 
+                           min="0" max="100" step="0.01" value="16">
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="labor_rate_override" class="form-label">Costo de Mano de Obra ($/m²) - Opcional</label>
+                    <input type="number" class="form-control" id="labor_rate_override" 
+                           min="0" step="0.01" placeholder="Dejar vacío para usar valores del catálogo">
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="notes" class="form-label">Notas</label>
+                    <textarea class="form-control" id="notes" rows="3" 
+                              placeholder="Notas adicionales sobre la cotización..."></textarea>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quote Summary -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">
+                <i class="bi bi-calculator"></i>
+                Resumen de Costos
+            </h5>
+        </div>
+        <div class="card-body">
+            <div id="cost-summary">
+                <!-- Cost summary will be displayed here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="row mb-4">
+        <div class="col-12 text-center">
+            <button type="button" class="btn btn-success btn-lg me-3" onclick="saveQuoteChanges()">
+                <i class="fas fa-save"></i> Guardar Cambios
+            </button>
+            <button type="button" class="btn btn-outline-primary me-3" onclick="recalculateQuote()">
+                <i class="fas fa-calculator"></i> Recalcular
+            </button>
+            <a href="/quotes/{{ quote_id }}" class="btn btn-outline-secondary">
+                <i class="fas fa-times"></i> Cancelar
+            </a>
+        </div>
+    </div>
+</form>
+
+<script>
+// Global variables
+let quoteData = null;
+let products = {{ products | tojson }};
+let glassTypes = {{ glass_types | tojson }};
+
+// Initialize page
+document.addEventListener('DOMContentLoaded', function() {
+    loadQuoteData();
+});
+
+async function loadQuoteData() {
+    try {
+        const response = await fetch(`/api/quotes/{{ quote_id }}/edit-data`);
+        if (!response.ok) {
+            throw new Error('Error al cargar datos de la cotización');
+        }
+        
+        quoteData = await response.json();
+        populateForm();
+        
+        // Hide spinner and show form
+        document.getElementById('loading-spinner').style.display = 'none';
+        document.getElementById('editQuoteForm').style.display = 'block';
+        
+    } catch (error) {
+        console.error('Error loading quote data:', error);
+        showAlert('Error al cargar los datos de la cotización: ' + error.message, 'danger');
+        document.getElementById('loading-spinner').style.display = 'none';
+    }
+}
+
+function populateForm() {
+    // Populate client information
+    document.getElementById('client_name').value = quoteData.client.name || '';
+    document.getElementById('client_email').value = quoteData.client.email || '';
+    document.getElementById('client_phone').value = quoteData.client.phone || '';
+    document.getElementById('client_address').value = quoteData.client.address || '';
+    
+    // Populate cost settings
+    document.getElementById('profit_margin').value = (quoteData.profit_margin * 100) || 25;
+    document.getElementById('indirect_costs_rate').value = (quoteData.indirect_costs_rate * 100) || 15;
+    document.getElementById('tax_rate').value = (quoteData.tax_rate * 100) || 16;
+    document.getElementById('labor_rate_override').value = quoteData.labor_rate_per_m2_override || '';
+    document.getElementById('notes').value = quoteData.notes || '';
+    
+    // Populate items
+    populateItems();
+}
+
+function populateItems() {
+    const container = document.getElementById('items-container');
+    container.innerHTML = '';
+    
+    if (quoteData.items && quoteData.items.length > 0) {
+        quoteData.items.forEach((item, index) => {
+            addItemToContainer(item, index);
+        });
+    } else {
+        container.innerHTML = '<p class="text-muted">No hay elementos en esta cotización. Agregue un elemento para comenzar.</p>';
+    }
+}
+
+function addItemToContainer(item, index) {
+    const container = document.getElementById('items-container');
+    
+    // Find product name
+    const product = products.find(p => p.id === item.product_bom_id);
+    const productName = product ? product.name : 'Producto no encontrado';
+    
+    const itemHtml = `
+        <div class="border rounded p-3 mb-3" id="item-${index}">
+            <div class="d-flex justify-content-between align-items-start mb-3">
+                <h6 class="mb-0">Elemento ${index + 1}</h6>
+                <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeItem(${index})">
+                    <i class="bi bi-trash"></i> Eliminar
+                </button>
+            </div>
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Producto BOM</label>
+                    <select class="form-select" id="product_bom_id_${index}" onchange="updateItemCalculation()">
+                        ${products.map(p => `<option value="${p.id}" ${p.id === item.product_bom_id ? 'selected' : ''}>${p.name}</option>`).join('')}
+                    </select>
+                    <small class="text-muted">${productName}</small>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Tipo de Vidrio</label>
+                    <select class="form-select" id="glass_type_${index}" onchange="updateItemCalculation()">
+                        ${glassTypes.map(gt => `<option value="${gt}" ${gt === item.selected_glass_type ? 'selected' : ''}>${gt}</option>`).join('')}
+                    </select>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <label class="form-label">Ancho (cm)</label>
+                    <input type="number" class="form-control" id="width_cm_${index}" 
+                           value="${item.width_cm}" min="1" step="0.1" onchange="updateItemCalculation()">
+                </div>
+                <div class="col-md-3 mb-3">
+                    <label class="form-label">Alto (cm)</label>
+                    <input type="number" class="form-control" id="height_cm_${index}" 
+                           value="${item.height_cm}" min="1" step="0.1" onchange="updateItemCalculation()">
+                </div>
+                <div class="col-md-3 mb-3">
+                    <label class="form-label">Cantidad</label>
+                    <input type="number" class="form-control" id="quantity_${index}" 
+                           value="${item.quantity}" min="1" step="1" onchange="updateItemCalculation()">
+                </div>
+                <div class="col-md-3 mb-3">
+                    <label class="form-label">Subtotal</label>
+                    <input type="text" class="form-control" id="subtotal_${index}" readonly 
+                           value="$${parseFloat(item.subtotal || 0).toFixed(2)}">
+                </div>
+            </div>
+        </div>
+    `;
+    
+    container.insertAdjacentHTML('beforeend', itemHtml);
+}
+
+function addNewItem() {
+    const newIndex = quoteData.items.length;
+    const newItem = {
+        product_bom_id: products.length > 0 ? products[0].id : null,
+        selected_glass_type: glassTypes.length > 0 ? glassTypes[0] : 'CLARO_6MM',
+        width_cm: 100,
+        height_cm: 100,
+        quantity: 1,
+        subtotal: 0
+    };
+    
+    quoteData.items.push(newItem);
+    addItemToContainer(newItem, newIndex);
+}
+
+function removeItem(index) {
+    if (quoteData.items.length <= 1) {
+        showAlert('No se puede eliminar el último elemento. Una cotización debe tener al menos un elemento.', 'warning');
+        return;
+    }
+    
+    quoteData.items.splice(index, 1);
+    populateItems(); // Repopulate to fix indices
+}
+
+async function updateClientInfo() {
+    try {
+        const clientData = {
+            name: document.getElementById('client_name').value.trim(),
+            email: document.getElementById('client_email').value.trim(),
+            phone: document.getElementById('client_phone').value.trim(),
+            address: document.getElementById('client_address').value.trim()
+        };
+        
+        if (!clientData.name) {
+            showAlert('El nombre del cliente es requerido', 'warning');
+            return;
+        }
+        
+        const response = await fetch(`/api/quotes/{{ quote_id }}/client`, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(clientData)
+        });
+        
+        if (!response.ok) {
+            throw new Error('Error al actualizar información del cliente');
+        }
+        
+        // Update local data
+        quoteData.client = clientData;
+        showAlert('Información del cliente actualizada exitosamente', 'success');
+        
+    } catch (error) {
+        console.error('Error updating client:', error);
+        showAlert('Error al actualizar cliente: ' + error.message, 'danger');
+    }
+}
+
+async function recalculateQuote() {
+    try {
+        const quoteRequest = collectQuoteData();
+        
+        const response = await fetch('/quotes/calculate', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(quoteRequest)
+        });
+        
+        if (!response.ok) {
+            throw new Error('Error al recalcular la cotización');
+        }
+        
+        const calculation = await response.json();
+        displayCostSummary(calculation);
+        showAlert('Cotización recalculada exitosamente', 'success');
+        
+    } catch (error) {
+        console.error('Error recalculating:', error);
+        showAlert('Error al recalcular: ' + error.message, 'danger');
+    }
+}
+
+async function saveQuoteChanges() {
+    try {
+        const quoteRequest = collectQuoteData();
+        
+        const response = await fetch(`/api/quotes/{{ quote_id }}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(quoteRequest)
+        });
+        
+        if (!response.ok) {
+            throw new Error('Error al guardar los cambios');
+        }
+        
+        showAlert('Cambios guardados exitosamente', 'success');
+        
+        // Redirect to quote view after 2 seconds
+        setTimeout(() => {
+            window.location.href = `/quotes/{{ quote_id }}`;
+        }, 2000);
+        
+    } catch (error) {
+        console.error('Error saving changes:', error);
+        showAlert('Error al guardar cambios: ' + error.message, 'danger');
+    }
+}
+
+function collectQuoteData() {
+    // Collect client data
+    const client = {
+        name: document.getElementById('client_name').value.trim(),
+        email: document.getElementById('client_email').value.trim(),
+        phone: document.getElementById('client_phone').value.trim(),
+        address: document.getElementById('client_address').value.trim()
+    };
+    
+    // Collect items data
+    const items = [];
+    quoteData.items.forEach((item, index) => {
+        items.push({
+            product_bom_id: parseInt(document.getElementById(`product_bom_id_${index}`).value),
+            selected_glass_type: document.getElementById(`glass_type_${index}`).value,
+            width_cm: parseFloat(document.getElementById(`width_cm_${index}`).value),
+            height_cm: parseFloat(document.getElementById(`height_cm_${index}`).value),
+            quantity: parseInt(document.getElementById(`quantity_${index}`).value)
+        });
+    });
+    
+    // Collect cost settings
+    const profitMargin = parseFloat(document.getElementById('profit_margin').value) / 100;
+    const indirectCostsRate = parseFloat(document.getElementById('indirect_costs_rate').value) / 100;
+    const taxRate = parseFloat(document.getElementById('tax_rate').value) / 100;
+    const laborRateOverride = document.getElementById('labor_rate_override').value;
+    const notes = document.getElementById('notes').value.trim();
+    
+    return {
+        client: client,
+        items: items,
+        profit_margin: profitMargin,
+        indirect_costs_rate: indirectCostsRate,
+        tax_rate: taxRate,
+        labor_rate_per_m2_override: laborRateOverride ? parseFloat(laborRateOverride) : null,
+        notes: notes
+    };
+}
+
+function displayCostSummary(calculation) {
+    const summaryHtml = `
+        <div class="row">
+            <div class="col-md-6">
+                <table class="table table-sm">
+                    <tr>
+                        <td>Subtotal Materiales:</td>
+                        <td class="text-end fw-bold">$${parseFloat(calculation.materials_subtotal).toFixed(2)}</td>
+                    </tr>
+                    <tr>
+                        <td>Subtotal Mano de Obra:</td>
+                        <td class="text-end fw-bold">$${parseFloat(calculation.labor_subtotal).toFixed(2)}</td>
+                    </tr>
+                    <tr>
+                        <td>Utilidad:</td>
+                        <td class="text-end fw-bold">$${parseFloat(calculation.profit_amount).toFixed(2)}</td>
+                    </tr>
+                </table>
+            </div>
+            <div class="col-md-6">
+                <table class="table table-sm">
+                    <tr>
+                        <td>Gastos Indirectos:</td>
+                        <td class="text-end fw-bold">$${parseFloat(calculation.indirect_costs_amount).toFixed(2)}</td>
+                    </tr>
+                    <tr>
+                        <td>IVA:</td>
+                        <td class="text-end fw-bold">$${parseFloat(calculation.tax_amount).toFixed(2)}</td>
+                    </tr>
+                    <tr class="table-primary">
+                        <td><strong>Total Final:</strong></td>
+                        <td class="text-end"><strong>$${parseFloat(calculation.total_final).toFixed(2)}</strong></td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    `;
+    
+    document.getElementById('cost-summary').innerHTML = summaryHtml;
+}
+
+function showAlert(message, type) {
+    const alertContainer = document.getElementById('alert-container');
+    const alertHtml = `
+        <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    `;
+    alertContainer.innerHTML = alertHtml;
+    
+    // Auto-dismiss success alerts after 5 seconds
+    if (type === 'success') {
+        setTimeout(() => {
+            const alert = alertContainer.querySelector('.alert');
+            if (alert) {
+                const bsAlert = new bootstrap.Alert(alert);
+                bsAlert.close();
+            }
+        }, 5000);
+    }
+}
+
+// Debounced update function for real-time calculations
+let updateTimeout;
+function updateItemCalculation() {
+    clearTimeout(updateTimeout);
+    updateTimeout = setTimeout(() => {
+        recalculateQuote();
+    }, 1000); // Wait 1 second after user stops typing
+}
+</script>
+
+{% endblock %}

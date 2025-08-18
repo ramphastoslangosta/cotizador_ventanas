@@ -1216,6 +1216,36 @@ async def view_quote_page(request: Request, quote_id: int, db: Session = Depends
         "notes": quote.notes
     })
 
+@app.get("/quotes/{quote_id}/edit", response_class=HTMLResponse)
+async def edit_quote_page(request: Request, quote_id: int, db: Session = Depends(get_db)):
+    """Página para editar cotización existente"""
+    user = await get_current_user_from_cookie(request, db)
+    if not user:
+        return RedirectResponse(url="/login")
+    
+    # Verificar que la cotización existe y pertenece al usuario
+    quote_service = DatabaseQuoteService(db)
+    quote = quote_service.get_quote_by_id(quote_id, user.id)
+    
+    if not quote:
+        raise HTTPException(status_code=404, detail="Cotización no encontrada")
+    
+    # Obtener datos necesarios para el formulario
+    product_bom_service = ProductBOMServiceDB(db)
+    products = product_bom_service.get_all_products()
+    
+    return templates.TemplateResponse("edit_quote.html", {
+        "request": request,
+        "title": f"Editar Cotización #{quote.id}",
+        "user": user,
+        "quote_id": quote.id,
+        "quote": quote,
+        "products": products,
+        "glass_types": [gt.value for gt in GlassType],
+        "window_types": [wt.value for wt in WindowType],
+        "aluminum_lines": [al.value for al in AluminumLine]
+    })
+
 # === RUTAS API PARA MATERIALES Y PRODUCTOS ===
 @app.get("/api/materials", response_model=List[AppMaterial])
 async def get_all_app_materials(current_user: User = Depends(get_current_user_flexible), db: Session = Depends(get_db)):
@@ -1420,6 +1450,132 @@ async def generate_quote_pdf(
     except Exception as e:
         import traceback
         error_detail = f"Error generando PDF: {str(e)}\n{traceback.format_exc()}"
+        print(error_detail)
+        raise HTTPException(status_code=500, detail=error_detail)
+
+# === RUTAS PARA EDICIÓN DE COTIZACIONES (QE-001) ===
+
+@app.put("/api/quotes/{quote_id}", response_model=QuoteCalculation)
+async def update_quote(
+    quote_id: int,
+    quote_request: QuoteRequest,
+    current_user: User = Depends(get_current_user_flexible),
+    db: Session = Depends(get_db)
+):
+    """Actualizar cotización completa y recalcular"""
+    try:
+        quote_service = DatabaseQuoteService(db)
+        
+        # Verificar que la cotización existe y pertenece al usuario
+        existing_quote = quote_service.get_quote_by_id(quote_id, current_user.id)
+        if not existing_quote:
+            raise HTTPException(status_code=404, detail="Cotización no encontrada")
+        
+        # Recalcular la cotización con los nuevos datos
+        updated_calculation = calculate_complete_quote(quote_request, db)
+        
+        # Preparar datos para actualización
+        quote_data_for_db = {
+            'client_name': updated_calculation.client.name,
+            'client_email': updated_calculation.client.email,
+            'client_phone': updated_calculation.client.phone,
+            'client_address': updated_calculation.client.address,
+            'total_final': updated_calculation.total_final,
+            'materials_subtotal': updated_calculation.materials_subtotal,
+            'labor_subtotal': updated_calculation.labor_subtotal,
+            'profit_amount': updated_calculation.profit_amount,
+            'indirect_costs_amount': updated_calculation.indirect_costs_amount,
+            'tax_amount': updated_calculation.tax_amount,
+            'items_count': len(updated_calculation.items),
+            'quote_data': updated_calculation.model_dump(mode='json'),
+            'notes': updated_calculation.notes,
+            'valid_until': updated_calculation.valid_until
+        }
+        
+        # Actualizar en base de datos
+        updated_quote = quote_service.update_quote(quote_id, current_user.id, quote_data_for_db)
+        if not updated_quote:
+            raise HTTPException(status_code=400, detail="Error al actualizar la cotización")
+        
+        return updated_calculation
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        error_detail = f"Error al actualizar cotización: {str(e)}\n{traceback.format_exc()}"
+        print(error_detail)
+        raise HTTPException(status_code=500, detail=error_detail)
+
+@app.patch("/api/quotes/{quote_id}/client")
+async def update_quote_client(
+    quote_id: int,
+    client_data: Client,
+    current_user: User = Depends(get_current_user_flexible),
+    db: Session = Depends(get_db)
+):
+    """Actualizar solo información del cliente"""
+    try:
+        quote_service = DatabaseQuoteService(db)
+        
+        # Verificar que la cotización existe y pertenece al usuario
+        existing_quote = quote_service.get_quote_by_id(quote_id, current_user.id)
+        if not existing_quote:
+            raise HTTPException(status_code=404, detail="Cotización no encontrada")
+        
+        # Actualizar información del cliente
+        client_dict = client_data.model_dump()
+        updated_quote = quote_service.update_quote_client(quote_id, current_user.id, client_dict)
+        
+        if not updated_quote:
+            raise HTTPException(status_code=400, detail="Error al actualizar información del cliente")
+        
+        return {"message": "Información del cliente actualizada exitosamente", "quote_id": quote_id}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        error_detail = f"Error al actualizar cliente: {str(e)}\n{traceback.format_exc()}"
+        print(error_detail)
+        raise HTTPException(status_code=500, detail=error_detail)
+
+@app.get("/api/quotes/{quote_id}/edit-data")
+async def get_quote_edit_data(
+    quote_id: int,
+    current_user: User = Depends(get_current_user_flexible),
+    db: Session = Depends(get_db)
+):
+    """Obtener datos de cotización para edición"""
+    try:
+        quote_service = DatabaseQuoteService(db)
+        
+        # Obtener la cotización
+        quote = quote_service.get_quote_by_id(quote_id, current_user.id)
+        if not quote:
+            raise HTTPException(status_code=404, detail="Cotización no encontrada")
+        
+        # Extraer datos originales de la cotización para formulario de edición
+        quote_data = quote.quote_data if quote.quote_data else {}
+        
+        return {
+            "quote_id": quote.id,
+            "client": quote_data.get('client', {}),
+            "items": quote_data.get('items', []),
+            "notes": quote.notes,
+            "profit_margin": quote_data.get('profit_margin', 0.25),
+            "indirect_costs_rate": quote_data.get('indirect_costs_rate', 0.15),
+            "tax_rate": quote_data.get('tax_rate', 0.16),
+            "labor_rate_per_m2_override": quote_data.get('labor_rate_per_m2_override'),
+            "created_at": quote.created_at.isoformat() if quote.created_at else None,
+            "valid_until": quote.valid_until.isoformat() if quote.valid_until else None
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        error_detail = f"Error al obtener datos para edición: {str(e)}\n{traceback.format_exc()}"
         print(error_detail)
         raise HTTPException(status_code=500, detail=error_detail)
 

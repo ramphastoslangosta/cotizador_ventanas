@@ -569,6 +569,56 @@ class DatabaseQuoteService:
         self.db.refresh(quote)
         return quote
     
+    def update_quote(self, quote_id: int, user_id: uuid.UUID, quote_data: dict) -> Optional[Quote]:
+        """Actualizar cotización existente"""
+        quote = self.get_quote_by_id(quote_id, user_id)
+        if not quote:
+            return None
+        
+        # Update basic fields
+        quote.client_name = quote_data.get('client_name', quote.client_name)
+        quote.client_email = quote_data.get('client_email', quote.client_email)
+        quote.client_phone = quote_data.get('client_phone', quote.client_phone)
+        quote.client_address = quote_data.get('client_address', quote.client_address)
+        quote.total_final = quote_data.get('total_final', quote.total_final)
+        quote.materials_subtotal = quote_data.get('materials_subtotal', quote.materials_subtotal)
+        quote.labor_subtotal = quote_data.get('labor_subtotal', quote.labor_subtotal)
+        quote.profit_amount = quote_data.get('profit_amount', quote.profit_amount)
+        quote.indirect_costs_amount = quote_data.get('indirect_costs_amount', quote.indirect_costs_amount)
+        quote.tax_amount = quote_data.get('tax_amount', quote.tax_amount)
+        quote.items_count = quote_data.get('items_count', quote.items_count)
+        quote.quote_data = quote_data.get('quote_data', quote.quote_data)
+        quote.notes = quote_data.get('notes', quote.notes)
+        quote.valid_until = quote_data.get('valid_until', quote.valid_until)
+        
+        # Add last_modified timestamp to quote_data for audit
+        import datetime
+        if isinstance(quote.quote_data, dict):
+            quote.quote_data['last_modified'] = datetime.datetime.now().isoformat()
+        
+        self.db.commit()
+        self.db.refresh(quote)
+        return quote
+    
+    def update_quote_client(self, quote_id: int, user_id: uuid.UUID, client_data: dict) -> Optional[Quote]:
+        """Actualizar solo información del cliente"""
+        quote = self.get_quote_by_id(quote_id, user_id)
+        if not quote:
+            return None
+        
+        quote.client_name = client_data.get('client_name', quote.client_name)
+        quote.client_email = client_data.get('client_email', quote.client_email)
+        quote.client_phone = client_data.get('client_phone', quote.client_phone)
+        quote.client_address = client_data.get('client_address', quote.client_address)
+        
+        # Update client info in quote_data as well
+        if isinstance(quote.quote_data, dict) and 'client' in quote.quote_data:
+            quote.quote_data['client'].update(client_data)
+        
+        self.db.commit()
+        self.db.refresh(quote)
+        return quote
+
     def delete_quote(self, quote_id: int, user_id: uuid.UUID) -> bool:
         """Eliminar cotización del usuario"""
         quote = self.get_quote_by_id(quote_id, user_id)
