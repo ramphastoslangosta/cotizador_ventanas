@@ -141,11 +141,6 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# DEBUG: Test route right after app creation
-@app.get("/debug-early-route")
-def debug_early_route():
-    return {"message": "Early route works - app is functioning"}
-
 # Configurar templates y archivos estáticos
 templates = Jinja2Templates(directory="templates")
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -760,16 +755,40 @@ async def dashboard_page(request: Request, db: Session = Depends(get_db)):
         "total_quotes": total_quotes
     })
 
-# === WORK ORDERS HTML ROUTES (SIMPLIFIED FOR DEBUGGING) ===
-@app.get("/work-orders-simple")
-def work_orders_simple():
-    """Ultra simple test route"""
-    return {"status": "working"}
+# === WORK ORDERS HTML ROUTES - QTO-001 ===
+@app.get("/work-orders", response_class=HTMLResponse)
+async def work_orders_list_page(request: Request, db: Session = Depends(get_db)):
+    """Work orders list page - QTO-001"""
+    user = await get_current_user_from_cookie(request, db)
+    if not user:
+        return RedirectResponse(url="/login")
+    
+    return templates.TemplateResponse("work_orders_list.html", {
+        "request": request,
+        "title": "Órdenes de Trabajo",
+        "user": user
+    })
 
-@app.get("/work-orders")
-def work_orders():
-    """Simplified work orders route"""
-    return {"message": "Work orders page - simplified"}
+@app.get("/work-orders/{work_order_id}", response_class=HTMLResponse)
+async def work_order_detail_page(request: Request, work_order_id: int, db: Session = Depends(get_db)):
+    """Work order detail page - QTO-001"""
+    user = await get_current_user_from_cookie(request, db)
+    if not user:
+        return RedirectResponse(url="/login")
+    
+    # Get work order details
+    work_order_service = DatabaseWorkOrderService(db)
+    work_order = work_order_service.get_work_order_by_id(work_order_id, user.id)
+    
+    if not work_order:
+        raise HTTPException(status_code=404, detail="Orden de trabajo no encontrada")
+    
+    return templates.TemplateResponse("work_order_detail.html", {
+        "request": request,
+        "title": f"Orden de Trabajo {work_order.order_number}",
+        "user": user,
+        "work_order": work_order
+    })
 
 # === RUTAS DE FORMULARIOS ===
 @app.post("/web/login")
@@ -2063,47 +2082,6 @@ async def update_work_order(
         logger = get_logger()
         logger.error(f"Error updating work order: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error updating work order: {str(e)}")
-
-
-# === RUTAS PARA WORK ORDERS - QTO-001 ===
-@app.get("/work-orders-test")
-async def work_orders_test():
-    """Simple test route"""
-    return {"message": "Work orders test route working"}
-
-@app.get("/work-orders", response_class=HTMLResponse)
-async def work_orders_list_page(request: Request, db: Session = Depends(get_db)):
-    """Work orders list page - QTO-001"""
-    user = await get_current_user_from_cookie(request, db)
-    if not user:
-        return RedirectResponse(url="/login")
-    
-    return templates.TemplateResponse("work_orders_list.html", {
-        "request": request,
-        "title": "Órdenes de Trabajo",
-        "user": user
-    })
-
-@app.get("/work-orders/{work_order_id}", response_class=HTMLResponse)
-async def work_order_detail_page(request: Request, work_order_id: int, db: Session = Depends(get_db)):
-    """Work order detail page - QTO-001"""
-    user = await get_current_user_from_cookie(request, db)
-    if not user:
-        return RedirectResponse(url="/login")
-    
-    # Get work order details
-    work_order_service = DatabaseWorkOrderService(db)
-    work_order = work_order_service.get_work_order_by_id(work_order_id, user.id)
-    
-    if not work_order:
-        raise HTTPException(status_code=404, detail="Orden de trabajo no encontrada")
-    
-    return templates.TemplateResponse("work_order_detail.html", {
-        "request": request,
-        "title": f"Orden de Trabajo {work_order.order_number}",
-        "user": user,
-        "work_order": work_order
-    })
 
 
 if __name__ == "__main__":
