@@ -370,68 +370,6 @@ class DatabaseProductService:
         self.db.commit()
         return True
 
-class DatabaseQuoteService:
-    """Servicio para gestión de cotizaciones en base de datos"""
-    
-    def __init__(self, db: Session):
-        self.db = db
-    
-    def get_quotes_by_user(self, user_id: uuid.UUID, limit: int = 50):
-        return self.db.query(Quote).filter(Quote.user_id == user_id).order_by(Quote.created_at.desc()).limit(limit).all()
-    
-    def get_quote_by_id(self, quote_id: int, user_id: uuid.UUID) -> Optional[Quote]:
-        return self.db.query(Quote).filter(
-            Quote.id == quote_id,
-            Quote.user_id == user_id
-        ).first()
-    
-    def create_quote(self, user_id: uuid.UUID, client_name: str, total_final: Decimal,
-                    materials_subtotal: Decimal, labor_subtotal: Decimal,
-                    profit_amount: Decimal, indirect_costs_amount: Decimal,
-                    tax_amount: Decimal, items_count: int, quote_data: dict,
-                    client_email: Optional[str] = None, client_phone: Optional[str] = None,
-                    client_address: Optional[str] = None, notes: Optional[str] = None,
-                    valid_until=None) -> Quote:
-        quote = Quote(
-            user_id=user_id,
-            client_name=client_name,
-            client_email=client_email,
-            client_phone=client_phone,
-            client_address=client_address,
-            total_final=total_final,
-            materials_subtotal=materials_subtotal,
-            labor_subtotal=labor_subtotal,
-            profit_amount=profit_amount,
-            indirect_costs_amount=indirect_costs_amount,
-            tax_amount=tax_amount,
-            items_count=items_count,
-            quote_data=quote_data,
-            notes=notes,
-            valid_until=valid_until
-        )
-        self.db.add(quote)
-        self.db.commit()
-        self.db.refresh(quote)
-        return quote
-    
-    def get_quote_statistics(self, user_id: uuid.UUID):
-        """Obtiene estadísticas de cotizaciones para el dashboard"""
-        total_quotes = self.db.query(Quote).filter(Quote.user_id == user_id).count()
-        
-        # Cotizaciones de los últimos 7 días
-        from datetime import datetime, timedelta
-        seven_days_ago = datetime.utcnow() - timedelta(days=7)
-        recent_quotes = self.db.query(Quote).filter(
-            Quote.user_id == user_id,
-            Quote.created_at >= seven_days_ago
-        ).all()
-        
-        return {
-            "total_quotes": total_quotes,
-            "recent_quotes": recent_quotes,
-            "recent_count": len(recent_quotes)
-        }
-
 class DatabaseColorService:
     """Servicio para gestión de colores y precios por color"""
     

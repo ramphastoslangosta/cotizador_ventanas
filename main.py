@@ -977,22 +977,25 @@ async def calculate_quote_main(
         
         # Guardar cotización en la base de datos
         quote_service = DatabaseQuoteService(db)
+        quote_data_for_db = {
+            'client_name': result.client.name,
+            'client_email': result.client.email,
+            'client_phone': result.client.phone,
+            'client_address': result.client.address,
+            'total_final': result.total_final,
+            'materials_subtotal': result.materials_subtotal,
+            'labor_subtotal': result.labor_subtotal,
+            'profit_amount': result.profit_amount,
+            'indirect_costs_amount': result.indirect_costs_amount,
+            'tax_amount': result.tax_amount,
+            'items_count': len(result.items),
+            'quote_data': result.model_dump(mode='json'),
+            'notes': result.notes,
+            'valid_until': result.valid_until
+        }
         saved_quote = quote_service.create_quote(
             user_id=current_user.id,
-            client_name=result.client.name,
-            client_email=result.client.email,
-            client_phone=result.client.phone,
-            client_address=result.client.address,
-            total_final=result.total_final,
-            materials_subtotal=result.materials_subtotal,
-            labor_subtotal=result.labor_subtotal,
-            profit_amount=result.profit_amount,
-            indirect_costs_amount=result.indirect_costs_amount,
-            tax_amount=result.tax_amount,
-            items_count=len(result.items),
-            quote_data=result.model_dump(mode='json'),
-            notes=result.notes,
-            valid_until=result.valid_until
+            quote_data=quote_data_for_db
         )
         
         # Asignar el ID de la cotización guardada
