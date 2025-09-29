@@ -162,8 +162,17 @@ Edit the `quantity_formula` field in product BOMs. **IMPORTANT**: All formulas a
 ### Database Schema Changes
 Modify SQLAlchemy models in `database.py`. Consider using Alembic for migrations in production.
 
-### Testing Data
-Sample data is automatically initialized on startup via `initialize_sample_data()` function.
+### Testing and Quality Assurance
+- **Sample Data**: Automatically initialized on startup via `initialize_sample_data()` function
+- **Test Suite**: Comprehensive test coverage with pytest configuration
+- **Test Commands**: 
+  ```bash
+  pytest                    # Run all tests
+  pytest tests/test_*.py    # Run specific test files
+  pytest -m unit           # Run unit tests only
+  pytest -m integration    # Run integration tests only
+  pytest -m security       # Run security tests only
+  ```
 
 ## Recent Fixes (August 2025)
 

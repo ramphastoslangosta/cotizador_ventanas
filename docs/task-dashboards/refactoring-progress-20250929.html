@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Refactoring Progress - FastAPI Window Quotation System</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px;
+        }
+        .header h1 { font-size: 36px; margin-bottom: 10px; }
+        .header .meta { opacity: 0.9; font-size: 14px; }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            padding: 30px;
+            background: #f8f9fa;
+        }
+        .metric-card {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .metric-card h3 {
+            font-size: 14px;
+            color: #64748b;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+        }
+        .metric-value {
+            font-size: 48px;
+            font-weight: 700;
+            line-height: 1;
+            margin-bottom: 10px;
+        }
+        .metric-label {
+            font-size: 14px;
+            color: #94a3b8;
+        }
+
+        .phase-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            padding: 0 30px 30px;
+            background: #f8f9fa;
+        }
+        .phase-card {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .phase-card h4 {
+            font-size: 16px;
+            margin-bottom: 15px;
+            color: #1e293b;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e2e8f0;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            transition: width 0.3s ease;
+        }
+        .phase-stats {
+            display: flex;
+            justify-content: space-between;
+            font-size: 14px;
+            color: #64748b;
+        }
+
+        .task-section {
+            padding: 30px;
+        }
+        .task-section h2 {
+            font-size: 24px;
+            margin-bottom: 20px;
+            color: #1e293b;
+        }
+        .filters {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        .filter-btn {
+            padding: 8px 16px;
+            border: 2px solid #e2e8f0;
+            background: white;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .filter-btn.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .task-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .task-table thead {
+            background: #f8f9fa;
+        }
+        .task-table th {
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+            color: #475569;
+            font-size: 13px;
+        }
+        .task-table td {
+            padding: 15px;
+            border-top: 1px solid #e2e8f0;
+            font-size: 14px;
+        }
+        .task-table tr:hover {
+            background: #f8f9fa;
+        }
+
+        .task-id {
+            font-family: 'Courier New', monospace;
+            font-weight: 600;
+            color: #667eea;
+        }
+        .priority-critical { background: #fee2e2; color: #991b1b; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+        .priority-high { background: #fed7aa; color: #9a3412; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+        .priority-medium { background: #fef3c7; color: #92400e; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+        .priority-low { background: #e0e7ff; color: #3730a3; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+
+        .status-pending { background: #cbd5e1; color: #334155; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+        .status-in-progress { background: #bfdbfe; color: #1e40af; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+        .status-completed { background: #bbf7d0; color: #166534; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+
+        .footer {
+            padding: 30px;
+            background: #f8f9fa;
+            text-align: center;
+            color: #64748b;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>FastAPI Window Quotation System - Refactoring Progress</h1>
+            <div class="meta">
+                Generated: 2025-09-29 |
+                Last Updated: 2025-09-29 |
+                Code Review: <a href="../code-review-reports/code-review-agent_2025-09-26-03.md" style="color: white;">code-review-agent_2025-09-26-03.md</a>
+            </div>
+        </div>
+
+        <div class="metrics-grid">
+            <div class="metric-card">
+                <h3>Overall Progress</h3>
+                <div class="metric-value" style="color: #667eea;">0%</div>
+                <div class="metric-label">0 of 11 tasks completed</div>
+            </div>
+
+            <div class="metric-card">
+                <h3>Current Velocity</h3>
+                <div class="metric-value" style="color: #10b981;">0</div>
+                <div class="metric-label">tasks completed per day (baseline)</div>
+            </div>
+
+            <div class="metric-card">
+                <h3>Critical Tasks</h3>
+                <div class="metric-value" style="color: #ef4444;">3</div>
+                <div class="metric-label">3 critical tasks pending</div>
+            </div>
+
+            <div class="metric-card">
+                <h3>Estimated Completion</h3>
+                <div class="metric-value" style="font-size: 32px; color: #8b5cf6;">Oct 25</div>
+                <div class="metric-label">Based on 15 days total effort</div>
+            </div>
+        </div>
+
+        <div class="phase-grid">
+            <div class="phase-card">
+                <h4>Phase 1: Security & Critical</h4>
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: 0%;"></div>
+                </div>
+                <div class="phase-stats">
+                    <span>0 / 5</span>
+                    <span>0%</span>
+                </div>
+            </div>
+
+            <div class="phase-card">
+                <h4>Phase 2: Performance</h4>
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: 0%;"></div>
+                </div>
+                <div class="phase-stats">
+                    <span>0 / 3</span>
+                    <span>0%</span>
+                </div>
+            </div>
+
+            <div class="phase-card">
+                <h4>Phase 3: Architecture</h4>
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: 0%;"></div>
+                </div>
+                <div class="phase-stats">
+                    <span>0 / 3</span>
+                    <span>0%</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="task-section">
+            <h2>All Tasks</h2>
+
+            <div class="filters">
+                <button class="filter-btn active" onclick="filterTasks('all')">All Tasks</button>
+                <button class="filter-btn" onclick="filterTasks('critical')">Critical</button>
+                <button class="filter-btn" onclick="filterTasks('high')">High Priority</button>
+                <button class="filter-btn" onclick="filterTasks('pending')">Pending</button>
+                <button class="filter-btn" onclick="filterTasks('phase-1')">Phase 1</button>
+                <button class="filter-btn" onclick="filterTasks('phase-2')">Phase 2</button>
+                <button class="filter-btn" onclick="filterTasks('phase-3')">Phase 3</button>
+            </div>
+
+            <table class="task-table">
+                <thead>
+                    <tr>
+                        <th>Task ID</th>
+                        <th style="width: 35%;">Title</th>
+                        <th>Priority</th>
+                        <th>Status</th>
+                        <th>Phase</th>
+                        <th>Effort</th>
+                        <th>Dependencies</th>
+                    </tr>
+                </thead>
+                <tbody id="task-tbody"></tbody>
+            </table>
+        </div>
+
+        <div class="footer">
+            <p>Dashboard generated by Task Package Generator Agent</p>
+            <p>For task execution guide, see: <a href="../task-guides/refactoring-guide-20250929.md">refactoring-guide-20250929.md</a></p>
+        </div>
+    </div>
+
+    <script>
+        const allTasks = [
+            {task_id: "TASK-20250929-001", title: "Decompose main.py - Extract authentication routes", priority: "critical", status: "pending", phase: "1", effort: "2", dependencies: "none", branch: "refactor/auth-routes-20250929"},
+            {task_id: "TASK-20250929-002", title: "Decompose main.py - Extract quote routes", priority: "critical", status: "pending", phase: "1", effort: "2", dependencies: "TASK-20250929-001", branch: "refactor/quote-routes-20250929"},
+            {task_id: "TASK-20250929-003", title: "Decompose main.py - Extract work order & material routes", priority: "critical", status: "pending", phase: "1", effort: "2", dependencies: "TASK-20250929-002", branch: "refactor/workorder-material-routes-20250929"},
+            {task_id: "TASK-20250929-004", title: "Fix CSV test script extreme complexity", priority: "high", status: "pending", phase: "1", effort: "1", dependencies: "none", branch: "refactor/csv-tests-complexity-20250929"},
+            {task_id: "TASK-20250929-005", title: "Implement service interfaces for dependency inversion", priority: "high", status: "pending", phase: "1", effort: "2", dependencies: "TASK-20250929-003", branch: "refactor/service-interfaces-20250929"},
+            {task_id: "TASK-20250929-006", title: "Optimize database queries in BOM calculations", priority: "high", status: "pending", phase: "2", effort: "2", dependencies: "TASK-20250929-003", branch: "perf/bom-query-optimization-20250929"},
+            {task_id: "TASK-20250929-007", title: "Implement formula evaluation caching", priority: "medium", status: "pending", phase: "2", effort: "1", dependencies: "TASK-20250929-006", branch: "perf/formula-caching-20250929"},
+            {task_id: "TASK-20250929-008", title: "Implement streaming CSV processing", priority: "medium", status: "pending", phase: "2", effort: "2", dependencies: "TASK-20250929-004", branch: "perf/csv-streaming-20250929"},
+            {task_id: "TASK-20250929-009", title: "Implement command pattern for quote calculations", priority: "medium", status: "pending", phase: "3", effort: "2", dependencies: "TASK-20250929-006", branch: "arch/quote-command-pattern-20250929"},
+            {task_id: "TASK-20250929-010", title: "Extract business logic from Jinja2 templates", priority: "low", status: "pending", phase: "3", effort: "1", dependencies: "TASK-20250929-009", branch: "arch/template-logic-extraction-20250929"},
+            {task_id: "TASK-20250929-011", title: "Implement factory pattern for model creation", priority: "low", status: "pending", phase: "3", effort: "1", dependencies: "TASK-20250929-010", branch: "arch/model-factories-20250929"}
+        ];
+
+        function renderTasks(tasks) {
+            const tbody = document.getElementById('task-tbody');
+            tbody.innerHTML = tasks.map(task => `
+                <tr data-priority="${task.priority}" data-status="${task.status}" data-phase="${task.phase}">
+                    <td><span class="task-id">${task.task_id}</span></td>
+                    <td>${task.title}</td>
+                    <td><span class="priority-${task.priority}">${task.priority.toUpperCase()}</span></td>
+                    <td><span class="status-${task.status}">${task.status.toUpperCase()}</span></td>
+                    <td>Phase ${task.phase}</td>
+                    <td>${task.effort} days</td>
+                    <td style="font-size: 12px;">${task.dependencies === 'none' ? '-' : task.dependencies}</td>
+                </tr>
+            `).join('');
+        }
+
+        function filterTasks(filter) {
+            const buttons = document.querySelectorAll('.filter-btn');
+            buttons.forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+
+            let filtered = allTasks;
+            if (filter !== 'all') {
+                filtered = allTasks.filter(task => {
+                    if (filter === 'critical' || filter === 'high' || filter === 'medium' || filter === 'low') {
+                        return task.priority === filter;
+                    }
+                    if (filter === 'pending' || filter === 'in-progress' || filter === 'completed') {
+                        return task.status === filter;
+                    }
+                    if (filter === 'phase-1') return task.phase === '1';
+                    if (filter === 'phase-2') return task.phase === '2';
+                    if (filter === 'phase-3') return task.phase === '3';
+                    return true;
+                });
+            }
+
+            renderTasks(filtered);
+        }
+
+        renderTasks(allTasks);
+    </script>
+</body>
+</html>
