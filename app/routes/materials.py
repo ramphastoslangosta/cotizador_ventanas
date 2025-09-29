@@ -28,7 +28,8 @@ from services.material_csv_service import MaterialCSVService
 from services.product_bom_csv_service import ProductBOMCSVService
 from models.enums import WindowType, AluminumLine, GlassType
 from models.color_models import MaterialColorCreate, MaterialColorResponse
-from config import templates, get_logger
+from config import templates
+from error_handling.logging_config import get_logger
 
 router = APIRouter()
 

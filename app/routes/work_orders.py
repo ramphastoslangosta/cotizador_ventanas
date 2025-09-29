@@ -28,7 +28,8 @@ from models.work_order_models import (
     WorkOrderStatus,
     WorkOrderPriority
 )
-from config import get_logger, templates
+from config import templates
+from error_handling.logging_config import get_logger
 
 router = APIRouter()
 
