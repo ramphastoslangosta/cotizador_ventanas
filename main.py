@@ -155,12 +155,16 @@ app.include_router(health_router, prefix="/api")
 from app.routes import auth as auth_routes
 app.include_router(auth_routes.router)
 
+# === TASK-20250929-002: Add Quotes Router ===
+from app.routes import quotes as quote_routes
+app.include_router(quote_routes.router)
+
 # === TASK-20250929-003: Add Work Orders and Materials Routers ===
 from app.routes import work_orders as work_order_routes
 from app.routes import materials as material_routes
 app.include_router(work_order_routes.router)
 app.include_router(material_routes.router)
-# NOTE: Old work order and material routes still exist in main.py temporarily
+# NOTE: Old routes still exist in main.py temporarily
 # Router takes precedence, old code can be removed in TASK-012
 
 # === MILESTONE 1.2: Global Error Handler ===
