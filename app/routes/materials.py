@@ -14,18 +14,76 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Query, File, Upl
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from sqlalchemy.orm import Session
 
-from database import get_db, User, AppMaterial, AppProduct
+from database import (
+    get_db,
+    User,
+    AppMaterial,
+    AppProduct,
+    DatabaseMaterialService,
+    DatabaseColorService,
+    DatabaseUserService
+)
 from services.product_bom_service_db import ProductBOMServiceDB
-from services.database_material_service import DatabaseMaterialService
-from services.database_color_service import DatabaseColorService
 from services.material_csv_service import MaterialCSVService
 from services.product_bom_csv_service import ProductBOMCSVService
-from app.dependencies.auth import get_current_user_from_cookie, get_current_user_flexible
 from models.enums import WindowType, AluminumLine, GlassType
 from models.color_models import MaterialColorCreate, MaterialColorResponse
-from config import templates
+from config import templates, get_logger
 
 router = APIRouter()
+
+# === AUTH HELPER FUNCTIONS ===
+# Note: These are temporary until app/dependencies/auth.py is created in TASK-001
+
+async def get_current_user_from_cookie(request: Request, db: Session):
+    """Get current user from cookie - returns None if no valid session"""
+    logger = get_logger()
+
+    try:
+        token = request.cookies.get("access_token")
+        if not token:
+            return None
+
+        user_service = DatabaseUserService(db)
+        session = user_service.get_session_by_token(token)
+
+        if not session:
+            return None
+
+        user = user_service.get_user_by_id(session.user_id)
+        if user and request.state:
+            request.state.user_id = str(user.id)
+
+        return user
+
+    except Exception as e:
+        logger.warning(f"Error getting user from cookie: {str(e)}")
+        return None
+
+async def get_current_user_flexible(request: Request, db: Session):
+    """Get current user from either cookie or bearer token"""
+    # Try cookie first
+    user = await get_current_user_from_cookie(request, db)
+    if user:
+        return user
+
+    # Try Authorization header
+    auth_header = request.headers.get("Authorization")
+    if not auth_header or not auth_header.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    token = auth_header.replace("Bearer ", "")
+    user_service = DatabaseUserService(db)
+    session = user_service.get_session_by_token(token)
+
+    if not session:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+
+    user = user_service.get_user_by_id(session.user_id)
+    if not user:
+        raise HTTPException(status_code=401, detail="User not found")
+
+    return user
 
 # === MATERIAL CRUD ROUTES ===
 

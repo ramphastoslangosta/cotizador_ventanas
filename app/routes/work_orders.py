@@ -11,11 +11,14 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Query
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy.orm import Session
 
-from database import get_db, User, WorkOrder
-from services.database_user_service import DatabaseUserService
-from services.database_quote_service import DatabaseQuoteService
-from services.database_work_order_service import DatabaseWorkOrderService
-from app.dependencies.auth import get_current_user_from_cookie, get_current_user_flexible
+from database import (
+    get_db,
+    User,
+    WorkOrder,
+    DatabaseUserService,
+    DatabaseQuoteService,
+    DatabaseWorkOrderService
+)
 from models.work_order_models import (
     WorkOrderCreate,
     WorkOrderUpdate,
@@ -28,6 +31,59 @@ from models.work_order_models import (
 from config import get_logger, templates
 
 router = APIRouter()
+
+# === AUTH HELPER FUNCTIONS ===
+# Note: These are temporary until app/dependencies/auth.py is created in TASK-001
+
+async def get_current_user_from_cookie(request: Request, db: Session):
+    """Get current user from cookie - returns None if no valid session"""
+    logger = get_logger()
+
+    try:
+        token = request.cookies.get("access_token")
+        if not token:
+            return None
+
+        user_service = DatabaseUserService(db)
+        session = user_service.get_session_by_token(token)
+
+        if not session:
+            return None
+
+        user = user_service.get_user_by_id(session.user_id)
+        if user and request.state:
+            request.state.user_id = str(user.id)
+
+        return user
+
+    except Exception as e:
+        logger.warning(f"Error getting user from cookie: {str(e)}")
+        return None
+
+async def get_current_user_flexible(request: Request, db: Session):
+    """Get current user from either cookie or bearer token"""
+    # Try cookie first
+    user = await get_current_user_from_cookie(request, db)
+    if user:
+        return user
+
+    # Try Authorization header
+    auth_header = request.headers.get("Authorization")
+    if not auth_header or not auth_header.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    token = auth_header.replace("Bearer ", "")
+    user_service = DatabaseUserService(db)
+    session = user_service.get_session_by_token(token)
+
+    if not session:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+
+    user = user_service.get_user_by_id(session.user_id)
+    if not user:
+        raise HTTPException(status_code=401, detail="User not found")
+
+    return user
 
 # === HTML ROUTES (User Interface) ===
 
