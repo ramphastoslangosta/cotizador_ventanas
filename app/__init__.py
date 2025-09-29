@@ -1,0 +1,1 @@
+"""FastAPI Window Quotation System - Application Package"""
