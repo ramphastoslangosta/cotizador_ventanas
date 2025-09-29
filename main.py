@@ -148,6 +148,14 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 # === MILESTONE 1.2: Add Health Check Router ===
 app.include_router(health_router, prefix="/api")
 
+# === TASK-20250929-003: Add Work Orders and Materials Routers ===
+from app.routes import work_orders as work_order_routes
+from app.routes import materials as material_routes
+app.include_router(work_order_routes.router)
+app.include_router(material_routes.router)
+# NOTE: Old work order and material routes still exist in main.py temporarily
+# Router takes precedence, old code can be removed in TASK-012
+
 # === MILESTONE 1.2: Global Error Handler ===
 @app.middleware("http")
 async def error_handling_middleware(request: Request, call_next):
