@@ -17,8 +17,6 @@ from sqlalchemy.orm import Session
 from database import (
     get_db,
     User,
-    AppMaterial,
-    AppProduct,
     DatabaseMaterialService,
     DatabaseColorService,
     DatabaseUserService
@@ -26,6 +24,7 @@ from database import (
 from services.product_bom_service_db import ProductBOMServiceDB
 from services.material_csv_service import MaterialCSVService
 from services.product_bom_csv_service import ProductBOMCSVService
+from models.product_bom_models import AppMaterial, AppProduct, MaterialType
 from models.quote_models import WindowType, AluminumLine, GlassType
 from models.color_models import MaterialColorCreate, MaterialColorResponse
 from config import templates
