@@ -2,6 +2,7 @@
 from pydantic_settings import BaseSettings
 from typing import Optional
 import os
+from fastapi.templating import Jinja2Templates
 
 class Settings(BaseSettings):
     # Database
@@ -39,3 +40,7 @@ class Settings(BaseSettings):
         case_sensitive = False
 
 settings = Settings()
+
+# Jinja2 templates configuration
+# Shared across all routers for consistent template rendering
+templates = Jinja2Templates(directory="templates")
