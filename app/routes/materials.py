@@ -321,7 +321,8 @@ async def get_materials_by_category(
                 "cost_per_unit": float(material.cost_per_unit) if material.cost_per_unit else 0,
                 "selling_unit_length_m": float(material.selling_unit_length_m) if material.selling_unit_length_m else None,
                 "category": category,
-                "colors": []
+                "colors": [],
+                "has_colors": False
             }
 
             # Add colors if available
@@ -334,6 +335,9 @@ async def get_materials_by_category(
                     "price_per_unit": float(material_color.price_per_unit) if material_color.price_per_unit else 0,
                     "is_available": material_color.is_available
                 })
+
+            # Set has_colors to True if there are any colors
+            material_data["has_colors"] = len(material_data["colors"]) > 0
 
             categories[category].append(material_data)
 
