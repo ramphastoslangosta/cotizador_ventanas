@@ -32,8 +32,11 @@ from security.middleware import SecurityMiddleware, SecureCookieMiddleware
 from security.input_validation import input_validator
 from config import settings
 
-# Importar para hashing de contraseñas
-from passlib.context import CryptContext
+# TASK-20250929-001: Auth dependencies moved to app.dependencies.auth
+from app.dependencies.auth import (
+    hash_password, verify_password, get_current_user_flexible,
+    get_current_user_from_cookie
+)
 
 # Importar para generación de PDFs
 from services.pdf_service import PDFQuoteService
@@ -147,6 +150,18 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # === MILESTONE 1.2: Add Health Check Router ===
 app.include_router(health_router, prefix="/api")
+
+# === TASK-20250929-001: Add Authentication Router ===
+from app.routes import auth as auth_routes
+app.include_router(auth_routes.router)
+
+# === TASK-20250929-003: Add Work Orders and Materials Routers ===
+from app.routes import work_orders as work_order_routes
+from app.routes import materials as material_routes
+app.include_router(work_order_routes.router)
+app.include_router(material_routes.router)
+# NOTE: Old work order and material routes still exist in main.py temporarily
+# Router takes precedence, old code can be removed in TASK-012
 
 # === MILESTONE 1.2: Global Error Handler ===
 @app.middleware("http")
@@ -360,32 +375,14 @@ app.add_middleware(
     allow_headers=["Accept", "Accept-Language", "Content-Language", "Content-Type", "Authorization", "X-CSRF-Token"],
 )
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 security = HTTPBearer()
 
 # === ENUMS ===
 from models.quote_models import WindowType, AluminumLine, GlassType
 from models.product_bom_models import AppMaterial, AppProduct, BOMItem, MaterialUnit, MaterialType
 
-# === MODELOS ===
-class UserRegister(BaseModel):
-    email: EmailStr
-    password: str
-    full_name: str
-
-class UserLogin(BaseModel):
-    email: EmailStr
-    password: str
-
-class UserResponse(BaseModel):
-    id: str
-    email: str
-    full_name: str
-
-class Token(BaseModel):
-    access_token: str
-    token_type: str
-    user: UserResponse
+# TASK-20250929-001: Auth models moved to app/routes/auth.py
+# (UserRegister, UserLogin, UserResponse, Token)
 
 # Importar modelos de quote_models.py
 from models.quote_models import (
@@ -418,56 +415,8 @@ def safe_serialize_for_json(obj):
     else:
         return obj
 
-def hash_password(password: str) -> str:
-    return pwd_context.hash(password)
-
-def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return pwd_context.verify(plain_password, hashed_password)
-
-def get_token_from_request(request: Request) -> Optional[str]:
-    auth_header = request.headers.get("Authorization")
-    if auth_header and auth_header.startswith("Bearer "):
-        return auth_header.split(" ")[1]
-    return request.cookies.get("access_token")
-
-async def get_current_user_flexible(request: Request, db: Session = Depends(get_db)):
-    """Get current user with comprehensive error handling"""
-    logger = get_logger()
-    
-    try:
-        token = get_token_from_request(request)
-        
-        if not token:
-            raise create_auth_error("TOKEN_EXPIRED")
-        
-        # Use database service with error handling
-        user_service = DatabaseUserService(db)
-        session = user_service.get_session_by_token(token)
-        
-        if not session:
-            logger.security_event("invalid_token", "Token validation failed", 
-                                token_prefix=token[:8] if token else "none",
-                                ip_address=request.client.host if request.client else "unknown")
-            raise create_auth_error("TOKEN_EXPIRED")
-        
-        user = user_service.get_user_by_id(session.user_id)
-        if not user:
-            logger.security_event("user_not_found", "User not found for valid session", 
-                                user_id=session.user_id)
-            raise create_auth_error("UNAUTHORIZED_ACCESS")
-        
-        # Store user ID in request state for logging
-        # CRITICAL FIX: Always store user_id as string to prevent UUID serialization errors
-        request.state.user_id = str(user.id)
-        
-        return user
-        
-    except (DatabaseError, AuthenticationError):
-        # Re-raise our custom errors
-        raise
-    except Exception as e:
-        logger.error(f"Unexpected error in authentication: {str(e)}")
-        raise create_auth_error("UNAUTHORIZED_ACCESS")
+# TASK-20250929-001: Auth helper functions moved to app/dependencies/auth.py
+# (hash_password, verify_password, get_token_from_request, get_current_user_flexible)
 
 async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security), db: Session = Depends(get_db)):
     """Get current user from Bearer token with error handling"""
@@ -497,31 +446,7 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
         logger.error(f"Unexpected error in Bearer token authentication: {str(e)}")
         raise create_auth_error("UNAUTHORIZED_ACCESS")
 
-async def get_current_user_from_cookie(request: Request, db: Session = Depends(get_db)):
-    """Get current user from cookie - returns None if no valid session"""
-    logger = get_logger()
-    
-    try:
-        token = request.cookies.get("access_token")
-        if not token:
-            return None
-        
-        user_service = DatabaseUserService(db)
-        session = user_service.get_session_by_token(token)
-        
-        if not session:
-            return None
-        
-        user = user_service.get_user_by_id(session.user_id)
-        if user and request.state:
-            # CRITICAL FIX: Always store user_id as string to prevent UUID serialization errors
-            request.state.user_id = str(user.id)
-            
-        return user
-        
-    except Exception as e:
-        logger.warning(f"Error getting user from cookie: {str(e)}")
-        return None
+# TASK-20250929-001: get_current_user_from_cookie moved to app/dependencies/auth.py
 
 def round_currency(amount: Decimal) -> Decimal:
     return amount.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
@@ -721,19 +646,7 @@ async def home_page(request: Request, db: Session = Depends(get_db)):
         "title": "Sistema de Cotización de Ventanas"
     })
 
-@app.get("/login", response_class=HTMLResponse)
-async def login_page(request: Request):
-    return templates.TemplateResponse("login.html", {
-        "request": request,
-        "title": "Iniciar Sesión"
-    })
-
-@app.get("/register", response_class=HTMLResponse)
-async def register_page(request: Request):
-    return templates.TemplateResponse("register.html", {
-        "request": request,
-        "title": "Crear Cuenta"
-    })
+# TASK-20250929-001: Login and register page routes moved to app/routes/auth.py
 
 
 @app.get("/dashboard", response_class=HTMLResponse)
@@ -790,115 +703,7 @@ async def work_order_detail_page(request: Request, work_order_id: int, db: Sessi
         "work_order": work_order
     })
 
-# === RUTAS DE FORMULARIOS ===
-@app.post("/web/login")
-async def web_login(
-    request: Request,
-    email: str = Form(...),
-    password: str = Form(...),
-    db: Session = Depends(get_db)
-):
-    user_service = DatabaseUserService(db)
-    user = user_service.get_user_by_email(email)
-    
-    if not user or not verify_password(password, user.hashed_password):
-        return templates.TemplateResponse("login.html", {
-            "request": request,
-            "title": "Iniciar Sesión",
-            "error": "Email o contraseña incorrectos"
-        })
-    
-    # Crear sesión
-    token = secrets.token_urlsafe(32)
-    expires_at = datetime.now(timezone.utc) + timedelta(hours=settings.session_expire_hours)
-    user_service.create_session(user.id, token, expires_at)
-    
-    # Crear respuesta con cookie
-    response = RedirectResponse(url="/dashboard", status_code=302)
-    response.set_cookie(
-        key="access_token",
-        value=token,
-        max_age=settings.session_expire_hours * 3600,
-        httponly=True,  # Prevent XSS access
-        secure=False,   # Set to True in production with HTTPS
-        samesite='lax'  # CSRF protection while allowing some cross-site usage
-    )
-    
-    return response
-
-@app.post("/web/register")
-async def web_register(
-    request: Request,
-    email: str = Form(...),
-    password: str = Form(...),
-    full_name: str = Form(...),
-    db: Session = Depends(get_db)
-):
-    user_service = DatabaseUserService(db)
-    
-    try:
-        # Validate input using secure validation
-        from security.input_validation import SecureUserInput
-        
-        # Create validation model
-        user_input = SecureUserInput(
-            email=email,
-            full_name=full_name,
-            password=password
-        )
-        
-        # Use validated data
-        validated_email = user_input.email
-        validated_name = user_input.full_name
-        validated_password = user_input.password
-        
-    except ValueError as e:
-        return templates.TemplateResponse("register.html", {
-            "request": request,
-            "title": "Crear Cuenta",
-            "error": str(e)
-        })
-    
-    # Verificar si el usuario ya existe
-    existing_user = user_service.get_user_by_email(validated_email)
-    if existing_user:
-        return templates.TemplateResponse("register.html", {
-            "request": request,
-            "title": "Crear Cuenta",
-            "error": "El email ya está registrado"
-        })
-    
-    # Crear usuario con datos validados
-    hashed_password = hash_password(validated_password)
-    new_user = user_service.create_user(validated_email, hashed_password, validated_name)
-    
-    # Auto-login
-    token = secrets.token_urlsafe(32)
-    expires_at = datetime.now(timezone.utc) + timedelta(hours=settings.session_expire_hours)
-    user_service.create_session(new_user.id, token, expires_at)
-    
-    response = RedirectResponse(url="/dashboard", status_code=302)
-    response.set_cookie(
-        key="access_token",
-        value=token,
-        max_age=settings.session_expire_hours * 3600,
-        httponly=True,  # Prevent XSS access
-        secure=False,   # Set to True in production with HTTPS
-        samesite='lax'  # CSRF protection while allowing some cross-site usage
-    )
-    
-    return response
-
-@app.post("/web/logout")
-async def web_logout(request: Request, db: Session = Depends(get_db)):
-    token = request.cookies.get("access_token")
-    if token:
-        user_service = DatabaseUserService(db)
-        user_service.invalidate_session(token)
-    
-    response = RedirectResponse(url="/login", status_code=302)
-    response.delete_cookie("access_token")
-    return response
+# TASK-20250929-001: Web form routes (login, register, logout) moved to app/routes/auth.py
 
 # === RUTAS PARA NUEVAS COTIZACIONES ===
 @app.get("/quotes/new", response_class=HTMLResponse)
@@ -1365,57 +1170,8 @@ async def products_catalog_page(request: Request, db: Session = Depends(get_db))
         "glass_types": glass_types_display,
     })
 
-# === RUTAS API COMPATIBILITY ===
-@app.post("/auth/register", response_model=UserResponse)
-async def register_user(user_data: UserRegister, db: Session = Depends(get_db)):
-    user_service = DatabaseUserService(db)
-    
-    try:
-        # Validate input using secure validation
-        from security.input_validation import SecureUserInput
-        
-        validated_input = SecureUserInput(
-            email=user_data.email,
-            full_name=user_data.full_name,
-            password=user_data.password
-        )
-        
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=f"Validation error: {str(e)}")
-    
-    if user_service.get_user_by_email(validated_input.email):
-        raise HTTPException(status_code=400, detail=f"El email {validated_input.email} ya está registrado")
-    
-    hashed_password = hash_password(validated_input.password)
-    new_user = user_service.create_user(validated_input.email, hashed_password, validated_input.full_name)
-    
-    return UserResponse(id=str(new_user.id), email=new_user.email, full_name=new_user.full_name)
-
-@app.post("/auth/login", response_model=Token)
-async def login_user(login_data: UserLogin, db: Session = Depends(get_db)):
-    user_service = DatabaseUserService(db)
-    user = user_service.get_user_by_email(login_data.email)
-    
-    if not user or not verify_password(login_data.password, user.hashed_password):
-        raise HTTPException(status_code=401, detail="Email o contraseña incorrectos")
-    
-    token = secrets.token_urlsafe(32)
-    expires_at = datetime.now(timezone.utc) + timedelta(hours=settings.session_expire_hours)
-    user_service.create_session(user.id, token, expires_at)
-    
-    user_response = UserResponse(id=str(user.id), email=user.email, full_name=user.full_name)
-    return Token(access_token=token, token_type="bearer", user=user_response)
-
-@app.get("/auth/me", response_model=UserResponse)
-async def get_current_user_info(
-    request: Request,
-    current_user: User = Depends(get_current_user_flexible)
-):
-    return UserResponse(
-        id=str(current_user.id),
-        email=current_user.email,
-        full_name=current_user.full_name
-    )
+# TASK-20250929-001: API auth routes moved to app/routes/auth.py
+# (POST /auth/register, POST /auth/login, GET /auth/me)
 
 @app.get("/quotes/{quote_id}/pdf")
 async def generate_quote_pdf(
