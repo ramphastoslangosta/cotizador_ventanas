@@ -315,11 +315,11 @@ async def get_materials_by_category(
             # Format material data
             material_data = {
                 "id": material.id,
-                "product_code": material.product_code,
+                "code": material.code,
                 "name": material.name,
-                "material_type": material.material_type,
-                "unit_price": float(material.unit_price) if material.unit_price else 0,
-                "selling_unit": material.selling_unit,
+                "unit": material.unit,
+                "cost_per_unit": float(material.cost_per_unit) if material.cost_per_unit else 0,
+                "selling_unit_length_m": float(material.selling_unit_length_m) if material.selling_unit_length_m else None,
                 "category": category,
                 "colors": []
             }
