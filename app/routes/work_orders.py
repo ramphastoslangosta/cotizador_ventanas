@@ -36,7 +36,7 @@ router = APIRouter()
 # === AUTH HELPER FUNCTIONS ===
 # Note: These are temporary until app/dependencies/auth.py is created in TASK-001
 
-async def get_current_user_from_cookie(request: Request, db: Session):
+async def get_current_user_from_cookie(request: Request, db: Session = Depends(get_db)):
     """Get current user from cookie - returns None if no valid session"""
     logger = get_logger()
 
@@ -61,7 +61,7 @@ async def get_current_user_from_cookie(request: Request, db: Session):
         logger.warning(f"Error getting user from cookie: {str(e)}")
         return None
 
-async def get_current_user_flexible(request: Request, db: Session):
+async def get_current_user_flexible(request: Request, db: Session = Depends(get_db)):
     """Get current user from either cookie or bearer token"""
     # Try cookie first
     user = await get_current_user_from_cookie(request, db)
