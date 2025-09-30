@@ -11,6 +11,7 @@ Understand the FastAPI window quotation system codebase by reading key files and
 ## Read
 
 - CLAUDE.md (project instructions and architecture overview)
+- TASK_QUICKSTART.md (working progress tasks)
 - tasks.csv (task tracker)
 - main.py (core FastAPI application and routes)
 - database.py (SQLAlchemy models and database services)
