@@ -4,6 +4,8 @@
 from fastapi import FastAPI, HTTPException, Depends, status, Request, Form, Response, UploadFile, File, Query
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
@@ -147,6 +149,18 @@ app = FastAPI(
 # Configurar templates y archivos estáticos
 templates = Jinja2Templates(directory="templates")
 app.mount("/static", StaticFiles(directory="static"), name="static")
+
+# HOTFIX-20251001-001: Add validation error handler with detailed logging
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    """Log validation errors with full details"""
+    print(f"VALIDATION ERROR at {request.url}:")
+    print(f"Errors: {exc.errors()}")
+    print(f"Body: {await request.body()}")
+    return JSONResponse(
+        status_code=422,
+        content={"detail": exc.errors()}
+    )
 
 # === MILESTONE 1.2: Add Health Check Router ===
 app.include_router(health_router, prefix="/api")
