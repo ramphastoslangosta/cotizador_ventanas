@@ -242,7 +242,7 @@ function addItemToContainer(item, index) {
                 <div class="col-md-6 mb-3">
                     <label class="form-label">Tipo de Vidrio</label>
                     <select class="form-select" id="glass_type_${index}" onchange="updateItemCalculation()">
-                        ${glassTypes.map(gt => `<option value="${gt}" ${gt === item.selected_glass_type ? 'selected' : ''}>${gt}</option>`).join('')}
+                        ${glassTypes.map(gt => `<option value="${gt.value}" ${gt.value === item.selected_glass_type ? 'selected' : ''}>${gt.label}</option>`).join('')}
                     </select>
                 </div>
                 <div class="col-md-3 mb-3">
@@ -276,13 +276,13 @@ function addNewItem() {
     const newIndex = quoteData.items.length;
     const newItem = {
         product_bom_id: products.length > 0 ? products[0].id : null,
-        selected_glass_type: glassTypes.length > 0 ? glassTypes[0] : 'CLARO_6MM',
+        selected_glass_type: glassTypes.length > 0 ? glassTypes[0].value : 'claro_6mm',
         width_cm: 100,
         height_cm: 100,
         quantity: 1,
         subtotal: 0
     };
-    
+
     quoteData.items.push(newItem);
     addItemToContainer(newItem, newIndex);
 }
