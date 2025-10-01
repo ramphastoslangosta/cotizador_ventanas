@@ -534,9 +534,14 @@ class DatabaseQuoteService:
     def __init__(self, db: Session):
         self.db = db
     
-    def get_quotes_by_user(self, user_id: uuid.UUID, limit: int = 50):
-        """Obtener cotizaciones del usuario"""
-        return self.db.query(Quote).filter(Quote.user_id == user_id).order_by(Quote.created_at.desc()).limit(limit).all()
+    def get_quotes_by_user(self, user_id: uuid.UUID, limit: int = 50, offset: int = 0):
+        """Obtener cotizaciones del usuario con soporte para paginación"""
+        return (self.db.query(Quote)
+                .filter(Quote.user_id == user_id)
+                .order_by(Quote.created_at.desc())
+                .offset(offset)
+                .limit(limit)
+                .all())
     
     def get_quote_by_id(self, quote_id: int, user_id: uuid.UUID) -> Optional[Quote]:
         """Obtener cotización específica del usuario"""
