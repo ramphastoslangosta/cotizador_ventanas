@@ -901,92 +901,93 @@ async def create_example_quote_main(
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
 # === RUTAS PARA LISTADO Y VISUALIZACIÓN ===
-@app.get("/quotes", response_class=HTMLResponse)
-async def quotes_list_page(request: Request, db: Session = Depends(get_db)):
-    user = await get_current_user_from_cookie(request, db)
-    if not user:
-        return RedirectResponse(url="/login")
-    
-    # Obtener cotizaciones del usuario
-    quote_service = DatabaseQuoteService(db)
-    user_quotes = quote_service.get_quotes_by_user(user.id)
-    
-    all_quotes = []
-    for quote in user_quotes:
-        try:
-            # Cargar datos JSON de la cotización
-            quote_data = quote.quote_data or {}
-            items_count = len(quote_data.get("items", []))
-            
-            # Calcular área y perímetro total con manejo de errores
-            total_area = 0
-            for item in quote_data.get("items", []):
-                try:
-                    area_value = item.get("area_m2", 0)
-                    if area_value is not None:
-                        total_area += float(area_value)
-                except (ValueError, TypeError):
-                    continue  # Skip invalid area values
-            
-            simple_quote = {
-                "id": quote.id,
-                "created_at": quote.created_at,
-                "client_name": quote.client_name or "Cliente Desconocido",
-                "client_email": quote.client_email or "",
-                "client_phone": quote.client_phone or "",
-                "total_final": float(quote.total_final) if quote.total_final else 0,
-                "items_count": items_count,
-                "total_area": total_area,
-                "price_per_m2": float(quote.total_final) / total_area if total_area > 0 and quote.total_final else 0,
-                "sample_items": []
-            }
-            
-            # Obtener items de muestra con manejo de errores
-            product_bom_service = ProductBOMServiceDB(db)
-            for i, item in enumerate(quote_data.get("items", [])[:3]):
-                try:
-                    product_info = product_bom_service.get_product_base_info(item.get("product_bom_id"))
-                    
-                    if product_info:
-                        item_name = product_info["name"]
-                        # Safe access to window_type enum value
-                        try:
-                            item_type = product_info["window_type"].value
-                        except AttributeError:
-                            item_type = str(product_info["window_type"])
-                    else:
-                        item_name = f"Producto #{item.get('product_bom_id', 'N/A')}"
-                        item_type = str(item.get("window_type", "Desconocido"))
-                    
-                    simple_quote["sample_items"].append({
-                        "window_type": item_type,
-                        "name": item_name,
-                        "width_cm": int(float(item.get("width_cm", 0))),
-                        "height_cm": int(float(item.get("height_cm", 0)))
-                    })
-                except Exception as item_error:
-                    # Skip problematic items but continue processing
-                    print(f"Error processing item {i} for quote {quote.id}: {item_error}")
-                    continue
-            
-            simple_quote["remaining_items"] = max(0, items_count - 3)
-            all_quotes.append(simple_quote)
-            
-        except Exception as quote_error:
-            # Skip problematic quotes but continue processing others
-            print(f"Error processing quote {quote.id}: {quote_error}")
-            continue
-    
-    from datetime import date
-    today = date.today()
-    
-    return templates.TemplateResponse("quotes_list.html", {
-        "request": request,
-        "title": "Todas las Cotizaciones",
-        "user": user,
-        "quotes": all_quotes,
-        "today": today
-    })
+# COMMENTED OUT: Duplicate route - using router version from app/routes/quotes.py instead
+# @app.get("/quotes", response_class=HTMLResponse)
+# async def quotes_list_page(request: Request, db: Session = Depends(get_db)):
+#     user = await get_current_user_from_cookie(request, db)
+#     if not user:
+#         return RedirectResponse(url="/login")
+#
+#     # Obtener cotizaciones del usuario
+#     quote_service = DatabaseQuoteService(db)
+#     user_quotes = quote_service.get_quotes_by_user(user.id)
+#
+#     all_quotes = []
+#     for quote in user_quotes:
+#         try:
+#             # Cargar datos JSON de la cotización
+#             quote_data = quote.quote_data or {}
+#             items_count = len(quote_data.get("items", []))
+#
+#             # Calcular área y perímetro total con manejo de errores
+#             total_area = 0
+#             for item in quote_data.get("items", []):
+#                 try:
+#                     area_value = item.get("area_m2", 0)
+#                     if area_value is not None:
+#                         total_area += float(area_value)
+#                 except (ValueError, TypeError):
+#                     continue  # Skip invalid area values
+#
+#             simple_quote = {
+#                 "id": quote.id,
+#                 "created_at": quote.created_at,
+#                 "client_name": quote.client_name or "Cliente Desconocido",
+#                 "client_email": quote.client_email or "",
+#                 "client_phone": quote.client_phone or "",
+#                 "total_final": float(quote.total_final) if quote.total_final else 0,
+#                 "items_count": items_count,
+#                 "total_area": total_area,
+#                 "price_per_m2": float(quote.total_final) / total_area if total_area > 0 and quote.total_final else 0,
+#                 "sample_items": []
+#             }
+#
+#             # Obtener items de muestra con manejo de errores
+#             product_bom_service = ProductBOMServiceDB(db)
+#             for i, item in enumerate(quote_data.get("items", [])[:3]):
+#                 try:
+#                     product_info = product_bom_service.get_product_base_info(item.get("product_bom_id"))
+#
+#                     if product_info:
+#                         item_name = product_info["name"]
+#                         # Safe access to window_type enum value
+#                         try:
+#                             item_type = product_info["window_type"].value
+#                         except AttributeError:
+#                             item_type = str(product_info["window_type"])
+#                     else:
+#                         item_name = f"Producto #{item.get('product_bom_id', 'N/A')}"
+#                         item_type = str(item.get("window_type", "Desconocido"))
+#
+#                     simple_quote["sample_items"].append({
+#                         "window_type": item_type,
+#                         "name": item_name,
+#                         "width_cm": int(float(item.get("width_cm", 0))),
+#                         "height_cm": int(float(item.get("height_cm", 0)))
+#                     })
+#                 except Exception as item_error:
+#                     # Skip problematic items but continue processing
+#                     print(f"Error processing item {i} for quote {quote.id}: {item_error}")
+#                     continue
+#
+#             simple_quote["remaining_items"] = max(0, items_count - 3)
+#             all_quotes.append(simple_quote)
+#
+#         except Exception as quote_error:
+#             # Skip problematic quotes but continue processing others
+#             print(f"Error processing quote {quote.id}: {quote_error}")
+#             continue
+#
+#     from datetime import date
+#     today = date.today()
+#
+#     return templates.TemplateResponse("quotes_list.html", {
+#         "request": request,
+#         "title": "Todas las Cotizaciones",
+#         "user": user,
+#         "quotes": all_quotes,
+#         "today": today
+#     })
 
 @app.get("/quotes/{quote_id}", response_class=HTMLResponse)
 async def view_quote_page(request: Request, quote_id: int, db: Session = Depends(get_db)):
