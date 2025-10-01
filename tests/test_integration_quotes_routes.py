@@ -88,7 +88,8 @@ def test_client():
     """FastAPI test client with lazy import"""
     # Import here to avoid database.py import at module level
     from main import app as fastapi_app
-    return TestClient(fastapi_app)
+    with TestClient(fastapi_app) as client:
+        yield client
 
 
 @pytest.fixture
@@ -143,3 +144,52 @@ def sample_quote_data():
 
 # Mark as integration test
 pytestmark = pytest.mark.integration
+
+
+class TestQuotesListRoute:
+    """Integration tests for GET /quotes route"""
+
+    @patch('app.routes.quotes.get_current_user_from_cookie')
+    @patch('app.routes.quotes.DatabaseQuoteService')
+    def test_quotes_list_empty_state(self, mock_quote_service, mock_get_user, test_client, test_user, test_session):
+        """Test quotes list page with no quotes"""
+        # Mock authentication to return our test user
+        mock_get_user.return_value = test_user
+
+        # Mock quote service to return empty list
+        mock_service_instance = Mock()
+        mock_service_instance.get_quotes_by_user.return_value = []
+        mock_quote_service.return_value = mock_service_instance
+
+        # Set session cookie
+        test_client.cookies.set("session_token", test_session.token)
+
+        # Request quotes list page
+        response = test_client.get("/quotes")
+
+        # Verify response
+        assert response.status_code == 200
+        assert response.headers["content-type"].startswith("text/html")
+
+        # Verify template rendered
+        html = response.text
+        assert "Cotizaciones" in html or "Quotes" in html or "cotizaciones" in html.lower()
+        assert test_user.full_name in html  # User info displayed
+
+        # Verify empty state message (adjust based on actual template)
+        assert ("No hay cotizaciones" in html or
+                "no quotes" in html.lower() or
+                "no tienes cotizaciones" in html.lower() or
+                "aún no has creado" in html.lower())
+
+    @patch('app.routes.quotes.get_current_user_from_cookie')
+    def test_quotes_list_without_authentication(self, mock_get_user, test_client):
+        """Test quotes list redirects to login when not authenticated"""
+        # Mock authentication to return None (not authenticated)
+        mock_get_user.return_value = None
+
+        response = test_client.get("/quotes", follow_redirects=False)
+
+        # Should redirect to login
+        assert response.status_code in [302, 303, 307]
+        assert "/login" in response.headers.get("location", "")
