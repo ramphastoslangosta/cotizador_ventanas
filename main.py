@@ -156,8 +156,9 @@ from app.routes import auth as auth_routes
 app.include_router(auth_routes.router)
 
 # === TASK-20250929-002: Add Quotes Router ===
-from app.routes import quotes as quote_routes
-app.include_router(quote_routes.router)
+# HOTFIX: Router disabled - using main.py route with data processing logic
+# from app.routes import quotes as quote_routes
+# app.include_router(quote_routes.router)
 
 # === TASK-20250929-003: Add Work Orders and Materials Routers ===
 from app.routes import work_orders as work_order_routes
