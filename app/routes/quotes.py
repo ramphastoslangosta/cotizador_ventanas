@@ -386,11 +386,29 @@ async def view_quote_page(
     if not quote:
         raise HTTPException(status_code=404, detail="Cotización no encontrada")
 
+    # Extract quote data for template (matching main.py format)
+    quote_data = quote.quote_data
+
     return templates.TemplateResponse("view_quote.html", {
         "request": request,
         "title": f"Cotización #{quote.id}",
         "user": user,
-        "quote": quote
+        "quote_id": quote.id,
+        "created_at": quote.created_at,
+        "client": {
+            "name": quote.client_name,
+            "email": quote.client_email,
+            "phone": quote.client_phone,
+            "address": quote.client_address
+        },
+        "items": quote_data.get("items", []),
+        "total_final": quote_data.get("total_final"),
+        "materials_subtotal": quote_data.get("materials_subtotal"),
+        "labor_subtotal": quote_data.get("labor_subtotal"),
+        "indirect_costs_amount": quote_data.get("indirect_costs_amount"),
+        "profit_amount": quote_data.get("profit_amount"),
+        "tax_amount": quote_data.get("tax_amount"),
+        "notes": quote.notes
     })
 
 
