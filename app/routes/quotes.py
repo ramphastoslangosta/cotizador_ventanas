@@ -348,6 +348,11 @@ async def quotes_list_page(
     total_quotes = len(all_quotes)
     total_pages = (total_quotes + per_page - 1) // per_page
 
+    # HOTFIX-20251001-001: Process quotes for template compatibility
+    from app.presenters.quote_presenter import QuoteListPresenter
+    presenter = QuoteListPresenter(db)
+    processed_quotes = [presenter.present(quote) for quote in user_quotes]
+
     from datetime import date
     today = date.today()
 
@@ -355,7 +360,7 @@ async def quotes_list_page(
         "request": request,
         "title": "Mis Cotizaciones",
         "user": user,
-        "quotes": user_quotes,
+        "quotes": processed_quotes,
         "page": page,
         "per_page": per_page,
         "total_quotes": total_quotes,
