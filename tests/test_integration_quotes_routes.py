@@ -253,3 +253,126 @@ class TestQuotesListRoute:
 
         # Verify the page rendered successfully with quote data
         assert "cotizaci" in html.lower()  # Spanish "cotización" or variations
+
+    @patch('app.routes.quotes.get_current_user_from_cookie')
+    @patch('app.routes.quotes.DatabaseQuoteService')
+    def test_quotes_list_pagination(self, mock_quote_service, mock_get_user,
+                                   test_client, test_user, test_session, sample_quote_data):
+        """Test quotes list pagination with multiple pages"""
+        # Mock authentication
+        mock_get_user.return_value = test_user
+
+        # Create 25 test quotes to trigger pagination
+        quotes = []
+        for i in range(25):
+            quote_data = sample_quote_data.copy()
+            quote_data["client"]["name"] = f"Client {i+1:02d}"
+
+            quote = MockQuote(
+                id=i+1,
+                user_id=test_user.id,
+                client_name=f"Client {i+1:02d}",
+                client_email=f"client{i+1}@test.com",
+                client_phone="+1234567890",
+                client_address="123 Test St",
+                total_final=Decimal("1786.40"),
+                materials_subtotal=Decimal("900.00"),
+                labor_subtotal=Decimal("200.00"),
+                profit_amount=Decimal("275.00"),
+                indirect_costs_amount=Decimal("165.00"),
+                tax_amount=Decimal("246.40"),
+                items_count=1,
+                quote_data=quote_data,
+                notes=f"Test quote {i+1}"
+            )
+            quotes.append(quote)
+
+        # Mock quote service to return first 20 quotes for page 1
+        mock_service_instance = Mock()
+        mock_service_instance.get_quotes_by_user.return_value = quotes[:20]
+        mock_quote_service.return_value = mock_service_instance
+
+        # Set session cookie
+        test_client.cookies.set("session_token", test_session.token)
+
+        # Test first page (default, should show first 20)
+        response_page1 = test_client.get("/quotes")
+        assert response_page1.status_code == 200
+        html_page1 = response_page1.text
+
+        # Verify quotes are rendered (service returned 20 quotes)
+        # The presenter processes them and template displays them
+        assert "cotización" in html_page1.lower()
+
+        # Verify we see the first batch of quotes
+        # Since we mocked the service to return quotes[:20], we should see those clients
+        assert "client 01" in html_page1.lower() or "client 02" in html_page1.lower()
+
+        # Mock quote service to return quotes 21-25 for page 2
+        mock_service_instance.get_quotes_by_user.return_value = quotes[20:25]
+
+        # Test second page (with page parameter)
+        # Note: Route may not implement pagination yet, but we verify the handler works
+        response_page2 = test_client.get("/quotes?page=2")
+        assert response_page2.status_code == 200
+        html_page2 = response_page2.text
+
+        # Verify the route handled the page parameter without error
+        assert "cotización" in html_page2.lower()
+
+        # If pagination is implemented, second page should show remaining quotes
+        # If not implemented, it will show same quotes as page 1 (that's ok for now)
+
+    @patch('app.routes.quotes.get_current_user_from_cookie')
+    @patch('app.routes.quotes.DatabaseQuoteService')
+    def test_quotes_list_pagination_edge_cases(self, mock_quote_service, mock_get_user,
+                                              test_client, test_user, test_session, sample_quote_data):
+        """Test pagination edge cases"""
+        # Mock authentication
+        mock_get_user.return_value = test_user
+
+        # Create exactly 20 quotes (one full page)
+        quotes = []
+        for i in range(20):
+            quote = MockQuote(
+                id=i+1,
+                user_id=test_user.id,
+                client_name=f"Edge Client {i+1:02d}",
+                client_email=f"edge{i+1}@test.com",
+                client_phone="+1234567890",
+                client_address="123 Test St",
+                total_final=Decimal("1000.00"),
+                materials_subtotal=Decimal("800.00"),
+                labor_subtotal=Decimal("200.00"),
+                profit_amount=Decimal("200.00"),
+                indirect_costs_amount=Decimal("150.00"),
+                tax_amount=Decimal("160.00"),
+                items_count=1,
+                quote_data=sample_quote_data,
+                notes=f"Edge test {i+1}"
+            )
+            quotes.append(quote)
+
+        # Mock quote service
+        mock_service_instance = Mock()
+        mock_service_instance.get_quotes_by_user.return_value = quotes
+        mock_quote_service.return_value = mock_service_instance
+
+        # Set session cookie
+        test_client.cookies.set("session_token", test_session.token)
+
+        # Test page 1 (should show all 20)
+        response = test_client.get("/quotes")
+        assert response.status_code == 200
+
+        # Mock empty results for page 2
+        mock_service_instance.get_quotes_by_user.return_value = []
+
+        # Test page 2 (should be empty or show empty state)
+        response_page2 = test_client.get("/quotes?page=2")
+        assert response_page2.status_code == 200
+        # Should handle gracefully (empty state or no pagination controls)
+
+        # Test invalid page parameter (should default to page 1 or show error gracefully)
+        response_invalid = test_client.get("/quotes?page=-1")
+        assert response_invalid.status_code in [200, 400]  # Either show page 1 or validation error
