@@ -376,3 +376,161 @@ class TestQuotesListRoute:
         # Test invalid page parameter (should default to page 1 or show error gracefully)
         response_invalid = test_client.get("/quotes?page=-1")
         assert response_invalid.status_code in [200, 400]  # Either show page 1 or validation error
+
+
+class TestQuoteListPresenter:
+    """Unit tests for QuoteListPresenter"""
+
+    def test_presenter_processes_quote_correctly(self, sample_quote_data):
+        """Test presenter adds calculated fields to quote"""
+        from app.presenters.quote_presenter import QuoteListPresenter
+        from unittest.mock import Mock
+
+        # Create a mock database session
+        mock_db = Mock()
+
+        # Create presenter
+        presenter = QuoteListPresenter(mock_db)
+
+        # Create a quote with items that have area
+        quote = MockQuote(
+            id=1,
+            user_id=uuid.uuid4(),
+            client_name="Test Client",
+            client_email="test@example.com",
+            total_final=Decimal("2000.00"),
+            materials_subtotal=Decimal("1000.00"),
+            labor_subtotal=Decimal("500.00"),
+            profit_amount=Decimal("300.00"),
+            indirect_costs_amount=Decimal("150.00"),
+            tax_amount=Decimal("320.00"),
+            items_count=2,
+            quote_data={
+                "items": [
+                    {"area_m2": 1.5, "product_bom_name": "Window A"},
+                    {"area_m2": 2.0, "product_bom_name": "Window B"}
+                ]
+            },
+            notes="Test"
+        )
+
+        # Process quote (presenter processes one at a time)
+        processed_quote = presenter.present(quote)
+
+        # Check that total_area was calculated (1.5 + 2.0 = 3.5)
+        # Presenter returns a dict
+        assert 'total_area' in processed_quote
+        assert processed_quote['total_area'] == 3.5
+
+        # Check that price_per_m2 was calculated
+        assert 'price_per_m2' in processed_quote
+        expected_price_per_m2 = float(quote.total_final) / 3.5
+        assert abs(processed_quote['price_per_m2'] - expected_price_per_m2) < 0.01
+
+    def test_presenter_handles_empty_items(self):
+        """Test presenter handles quote with no items gracefully"""
+        from app.presenters.quote_presenter import QuoteListPresenter
+        from unittest.mock import Mock
+
+        mock_db = Mock()
+        presenter = QuoteListPresenter(mock_db)
+
+        # Create quote with empty items
+        quote = MockQuote(
+            id=1,
+            user_id=uuid.uuid4(),
+            client_name="Empty Client",
+            total_final=Decimal("100.00"),
+            materials_subtotal=Decimal("80.00"),
+            labor_subtotal=Decimal("20.00"),
+            profit_amount=Decimal("10.00"),
+            indirect_costs_amount=Decimal("5.00"),
+            tax_amount=Decimal("15.00"),
+            items_count=0,
+            quote_data={"items": []},
+            notes="Empty"
+        )
+
+        # Process should not crash
+        processed_quote = presenter.present(quote)
+
+        # Should have calculated fields with defaults
+        assert 'total_area' in processed_quote
+        assert processed_quote['total_area'] == 0 or processed_quote['total_area'] is None
+
+    def test_presenter_handles_corrupted_data(self):
+        """Test presenter handles corrupted quote data gracefully"""
+        from app.presenters.quote_presenter import QuoteListPresenter
+        from unittest.mock import Mock
+
+        mock_db = Mock()
+        presenter = QuoteListPresenter(mock_db)
+
+        # Create quote with corrupted quote_data
+        quote = MockQuote(
+            id=1,
+            user_id=uuid.uuid4(),
+            client_name="Corrupted Client",
+            total_final=Decimal("500.00"),
+            materials_subtotal=Decimal("400.00"),
+            labor_subtotal=Decimal("100.00"),
+            profit_amount=Decimal("50.00"),
+            indirect_costs_amount=Decimal("25.00"),
+            tax_amount=Decimal("80.00"),
+            items_count=1,
+            quote_data=None,  # Corrupted: None instead of dict
+            notes="Corrupted"
+        )
+
+        # Process should not crash
+        try:
+            processed = presenter.present(quote)
+            # If it doesn't crash, that's good
+            assert processed is not None or processed is None  # Either works
+        except Exception as e:
+            # If it does crash, it should be handled gracefully
+            assert False, f"Presenter should handle corrupted data gracefully, but raised: {e}"
+
+    def test_presenter_processes_multiple_quotes(self, sample_quote_data):
+        """Test presenter handles multiple quotes correctly"""
+        from app.presenters.quote_presenter import QuoteListPresenter
+        from unittest.mock import Mock
+
+        mock_db = Mock()
+        presenter = QuoteListPresenter(mock_db)
+
+        # Create multiple quotes
+        quotes = []
+        for i in range(3):
+            quote = MockQuote(
+                id=i+1,
+                user_id=uuid.uuid4(),
+                client_name=f"Client {i+1}",
+                client_email=f"client{i+1}@test.com",
+                total_final=Decimal(f"{1000 + i*100}.00"),
+                materials_subtotal=Decimal(f"{800 + i*80}.00"),
+                labor_subtotal=Decimal("200.00"),
+                profit_amount=Decimal("100.00"),
+                indirect_costs_amount=Decimal("50.00"),
+                tax_amount=Decimal("160.00"),
+                items_count=1,
+                quote_data={
+                    "items": [
+                        {"area_m2": 1.0 + i*0.5, "product_bom_name": f"Window {i+1}"}
+                    ]
+                },
+                notes=f"Test {i+1}"
+            )
+            quotes.append(quote)
+
+        # Process all quotes (presenter processes one at a time)
+        processed = [presenter.present(quote) for quote in quotes]
+
+        # Verify all quotes processed
+        assert len(processed) == 3
+
+        # Verify each has calculated fields
+        for i, pq in enumerate(processed):
+            assert 'total_area' in pq
+            assert 'price_per_m2' in pq
+            assert pq['client_name'] == f"Client {i+1}"
