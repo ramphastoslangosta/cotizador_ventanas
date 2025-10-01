@@ -1,22 +1,32 @@
 # Task Package Quickstart Guide
 
-**Generated**: 2025-09-29
+**Generated**: 2025-09-29 | **Updated**: 2025-10-01 (After Hotfix)
 **Project**: FastAPI Window Quotation System Refactoring
-**Total Tasks**: 11 tasks | **Estimated Effort**: 12-15 days
+**Total Tasks**: 19 tasks (12 original + 7 hotfix) | **Estimated Effort**: 16-20 days
+
+---
+
+## 🚨 URGENT: Hotfix Tasks Added (Oct 1, 2025)
+
+**Emergency hotfix completed** - Production quotes list page was broken for 4-6 hours. Router needs data processing fix before TASK-012 can proceed.
+
+**TASK-012 BLOCKED** - Must complete HOTFIX-20251001-001 first
 
 ---
 
 ## Quick Overview
 
-This task package provides a complete workflow for executing the refactoring roadmap identified in the code review. All tasks are tracked, documented, and ready for execution.
+This task package provides a complete workflow for executing the refactoring roadmap identified in the code review, **now updated with 7 critical hotfix tasks** from production incident.
 
 ### What You Get
-- 11 actionable tasks across 3 phases
+- 19 actionable tasks (12 original + 7 hotfix prevention)
+- **7 new high-priority tasks** from hotfix RCA
 - Branch creation scripts for all tasks
 - PR templates for each phase type
 - Test scaffolds ready to implement
 - Interactive progress dashboard
 - Comprehensive execution guide
+- **Root cause analysis** (797 lines)
 
 ---
 
@@ -63,18 +73,29 @@ cat tests/test_routes_refactor_scaffold.py
 
 ---
 
-## Task Phases
+## Task Phases (UPDATED)
 
-### Phase 1: Critical Architecture (5 tasks, 9 days)
+### Phase 0: HOTFIX Tasks (4 tasks, 5-6 days) **NEW**
+**Focus**: Fix router bugs and prevent future incidents
+
+| Task | Description | Effort | Priority | Status |
+|------|-------------|--------|----------|--------|
+| HOTFIX-20251001-001 | Fix router data processing | 1-2 days | 🔴 CRITICAL | **BLOCKS TASK-012** |
+| HOTFIX-20251001-002 | Add integration tests | 1-2 days | 🔴 CRITICAL | Pending |
+| DEVOPS-20251001-001 | Docker build improvements | 1 week | HIGH | Pending |
+| PROCESS-20251001-001 | Route extraction protocol | 1 week | HIGH | Pending |
+
+### Phase 1: Critical Architecture (6 tasks, 9 days)
 **Focus**: Decompose 2,273-line main.py monolith
 
-| Task | Description | Effort | Priority |
-|------|-------------|--------|----------|
-| TASK-20250929-001 | Extract authentication routes | 2 days | CRITICAL |
-| TASK-20250929-002 | Extract quote routes | 2 days | CRITICAL |
-| TASK-20250929-003 | Extract work order & material routes | 2 days | CRITICAL |
-| TASK-20250929-004 | Fix CSV test complexity (31 → <10) | 1 day | HIGH |
-| TASK-20250929-005 | Implement service interfaces (DIP) | 2 days | HIGH |
+| Task | Description | Effort | Priority | Status |
+|------|-------------|--------|----------|--------|
+| TASK-20250929-001 | Extract authentication routes | 2 days | CRITICAL | ✅ **DEPLOYED** |
+| TASK-20250929-002 | Extract quote routes | 2 days | CRITICAL | ⚠️ **DEPLOYED** (router disabled) |
+| TASK-20250929-003 | Extract work order & material routes | 2 days | CRITICAL | ✅ **DEPLOYED** |
+| TASK-20250929-012 | Remove duplicate routes | 0.5 days | MEDIUM | 🚫 **BLOCKED** |
+| TASK-20250929-004 | Fix CSV test complexity (31 → <10) | 1 day | HIGH | Pending |
+| TASK-20250929-005 | Implement service interfaces (DIP) | 2 days | HIGH | Pending |
 
 ### Phase 2: Performance Optimization (3 tasks, 5 days)
 **Focus**: Improve response times and eliminate bottlenecks
@@ -381,30 +402,49 @@ cat tasks.csv | column -t -s','
 
 ---
 
-## Next Steps
+## Next Steps (UPDATED FOR HOTFIX)
 
-### Immediate Actions (Today)
+### 🔴 IMMEDIATE - Critical Path (This Week)
 
-1. **Review task list**:
+1. **HOTFIX-20251001-001: Fix Router Data Processing**
    ```bash
-   open docs/task-dashboards/refactoring-progress-20250929.html
+   # Create presenter class
+   mkdir -p app/presenters
+   touch app/presenters/quote_presenter.py
+
+   # Extract 85 lines of data processing logic
+   # Update router to use presenter
+   # Re-enable router registration
+   ```
+   **Estimated**: 1-2 days | **Blocks**: TASK-012
+
+2. **HOTFIX-20251001-002: Add Integration Tests**
+   ```bash
+   # Add template rendering tests
+   pytest tests/test_integration_quotes.py -v
+   ```
+   **Estimated**: 1-2 days
+
+3. **TASK-012: Remove Duplicates** (After HOTFIX-001)
+   ```bash
+   git checkout -b refactor/cleanup-duplicate-routes-20250929-v2
+   # Remove ~674 lines from main.py
+   ```
+   **Estimated**: 0.5 days
+
+### This Week Actions
+
+4. **TASK-004**: CSV Test Complexity (can run in parallel)
+5. **Review RCA Document**:
+   ```bash
+   cat HOTFIX-20251001-RCA.md
    ```
 
-2. **Create Phase 1 branches**:
-   ```bash
-   bash scripts/branches/create-phase-1-branches.sh
-   ```
+### Next 2 Weeks
 
-3. **Start TASK-20250929-001**:
-   ```bash
-   git checkout refactor/auth-routes-20250929
-   cat tests/test_routes_refactor_scaffold.py
-   ```
-
-4. **Read comprehensive guide**:
-   ```bash
-   open docs/task-guides/refactoring-guide-20250929.md
-   ```
+6. **DEVOPS-20251001-001**: Docker Build Improvements
+7. **PROCESS-20251001-001**: Route Extraction Protocol
+8. **TASK-005**: Service Interfaces
 
 ### This Week
 
