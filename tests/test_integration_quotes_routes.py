@@ -15,7 +15,7 @@ import uuid
 # Import only what we need from main to avoid database import issues
 # Database models will be mocked
 class MockQuote:
-    """Mock Quote model"""
+    """Mock Quote model with proper datetime handling"""
     def __init__(self, **kwargs):
         self.id = kwargs.get('id', 1)
         self.user_id = kwargs.get('user_id', uuid.uuid4())
@@ -32,7 +32,13 @@ class MockQuote:
         self.items_count = kwargs.get('items_count', 1)
         self.quote_data = kwargs.get('quote_data', {})
         self.notes = kwargs.get('notes', 'Test quote')
-        self.created_at = kwargs.get('created_at', datetime.now(timezone.utc))
+        # Ensure created_at is a real datetime object with working .date() method
+        created_at = kwargs.get('created_at', datetime.now(timezone.utc))
+        # Make sure it's not already a Mock
+        if isinstance(created_at, datetime):
+            self.created_at = created_at
+        else:
+            self.created_at = datetime.now(timezone.utc)
         self.valid_until = kwargs.get('valid_until', datetime.now(timezone.utc) + timedelta(days=30))
 
 
@@ -193,3 +199,57 @@ class TestQuotesListRoute:
         # Should redirect to login
         assert response.status_code in [302, 303, 307]
         assert "/login" in response.headers.get("location", "")
+
+    @patch('app.routes.quotes.get_current_user_from_cookie')
+    @patch('app.routes.quotes.DatabaseQuoteService')
+    def test_quotes_list_single_quote(self, mock_quote_service,
+                                     mock_get_user, test_client, test_user, test_session, sample_quote_data):
+        """Test quotes list page with one quote"""
+        # Mock authentication
+        mock_get_user.return_value = test_user
+
+        # Create a mock quote
+        quote = MockQuote(
+            id=1,
+            user_id=test_user.id,
+            client_name=sample_quote_data["client"]["name"],
+            client_email=sample_quote_data["client"]["email"],
+            client_phone=sample_quote_data["client"]["phone"],
+            client_address=sample_quote_data["client"]["address"],
+            total_final=Decimal(str(sample_quote_data["total_final"])),
+            materials_subtotal=Decimal(str(sample_quote_data["materials_subtotal"])),
+            labor_subtotal=Decimal(str(sample_quote_data["labor_subtotal"])),
+            profit_amount=Decimal(str(sample_quote_data["profit_amount"])),
+            indirect_costs_amount=Decimal(str(sample_quote_data["indirect_costs_amount"])),
+            tax_amount=Decimal(str(sample_quote_data["tax_amount"])),
+            items_count=len(sample_quote_data["items"]),
+            quote_data=sample_quote_data,
+            notes=sample_quote_data.get("notes")
+        )
+
+        # Mock quote service to return our quote
+        # Let the real QuoteListPresenter process it
+        mock_service_instance = Mock()
+        mock_service_instance.get_quotes_by_user.return_value = [quote]
+        mock_quote_service.return_value = mock_service_instance
+
+        # Set session cookie
+        test_client.cookies.set("session_token", test_session.token)
+
+        # Request quotes list page
+        response = test_client.get("/quotes")
+
+        # Verify response
+        assert response.status_code == 200
+        html = response.text
+
+        # Verify quote data appears in HTML
+        assert sample_quote_data["client"]["name"] in html
+        assert str(quote.id) in html
+
+        # Verify total_final displays correctly
+        # The presenter processes the quote and adds calculated fields
+        assert "1786" in html or "1,786" in html  # total_final
+
+        # Verify the page rendered successfully with quote data
+        assert "cotizaci" in html.lower()  # Spanish "cotización" or variations
