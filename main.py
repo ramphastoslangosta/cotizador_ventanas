@@ -288,8 +288,23 @@ async def error_handling_middleware(request: Request, call_next):
     except Exception as e:
         # Handle unexpected errors
         response_time = (time.time() - start_time) * 1000
-        
+
         # Log the exact exception details for debugging
+        import traceback
+        import sys
+
+        # Print to stdout for immediate visibility
+        print(f"\n{'='*80}", file=sys.stderr)
+        print(f"CRITICAL ERROR IN MIDDLEWARE", file=sys.stderr)
+        print(f"{'='*80}", file=sys.stderr)
+        print(f"Exception Type: {type(e).__name__}", file=sys.stderr)
+        print(f"Exception Message: {str(e)}", file=sys.stderr)
+        print(f"Request: {method} {url}", file=sys.stderr)
+        print(f"IP: {ip_address}", file=sys.stderr)
+        print(f"\nFull Traceback:", file=sys.stderr)
+        print(traceback.format_exc(), file=sys.stderr)
+        print(f"{'='*80}\n", file=sys.stderr)
+
         logger.critical(
             f"UNEXPECTED EXCEPTION IN MIDDLEWARE: {type(e).__name__}: {str(e)}",
             request_id=request_id,
@@ -300,9 +315,8 @@ async def error_handling_middleware(request: Request, call_next):
             response_time=response_time,
             ip_address=ip_address
         )
-        
+
         # Log the full traceback
-        import traceback
         logger.critical(f"Full traceback: {traceback.format_exc()}")
         
         # Create error detail for unexpected errors
