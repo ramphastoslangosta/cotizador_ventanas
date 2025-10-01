@@ -534,3 +534,157 @@ class TestQuoteListPresenter:
             assert 'total_area' in pq
             assert 'price_per_m2' in pq
             assert pq['client_name'] == f"Client {i+1}"
+
+
+class TestDatabaseQuoteServicePagination:
+    """Unit tests for DatabaseQuoteService pagination"""
+
+    def test_get_quotes_with_limit(self, test_user, sample_quote_data):
+        """Test get_quotes_by_user respects limit parameter"""
+        from database import DatabaseQuoteService
+        from unittest.mock import Mock, MagicMock
+
+        # Create mock database session
+        mock_db = Mock()
+
+        # Create 5 mock quotes
+        quotes = []
+        for i in range(5):
+            quote = MockQuote(
+                id=i+1,
+                user_id=test_user.id,
+                client_name=f"Limit Client {i+1}",
+                total_final=Decimal("1000.00"),
+                materials_subtotal=Decimal("800.00"),
+                labor_subtotal=Decimal("200.00"),
+                items_count=1,
+                quote_data=sample_quote_data
+            )
+            quotes.append(quote)
+
+        # Mock query chain
+        mock_query = MagicMock()
+        mock_query.filter.return_value = mock_query
+        mock_query.order_by.return_value = mock_query
+        mock_query.limit.return_value = mock_query
+        mock_query.offset.return_value = mock_query
+        mock_query.all.return_value = quotes[:3]  # Return only first 3
+
+        mock_db.query.return_value = mock_query
+
+        # Create service
+        service = DatabaseQuoteService(mock_db)
+
+        # Get quotes with limit=3
+        result = service.get_quotes_by_user(str(test_user.id), limit=3, offset=0)
+
+        # Verify limit was applied
+        mock_query.limit.assert_called_with(3)
+        assert len(result) == 3
+
+    def test_get_quotes_with_offset(self, test_user, sample_quote_data):
+        """Test get_quotes_by_user respects offset parameter"""
+        from database import DatabaseQuoteService
+        from unittest.mock import Mock, MagicMock
+
+        mock_db = Mock()
+
+        # Create mock quotes for page 2 (offset=20)
+        quotes_page2 = []
+        for i in range(20, 25):  # Quotes 21-25
+            quote = MockQuote(
+                id=i+1,
+                user_id=test_user.id,
+                client_name=f"Offset Client {i+1}",
+                total_final=Decimal("1000.00"),
+                materials_subtotal=Decimal("800.00"),
+                labor_subtotal=Decimal("200.00"),
+                items_count=1,
+                quote_data=sample_quote_data
+            )
+            quotes_page2.append(quote)
+
+        # Mock query chain
+        mock_query = MagicMock()
+        mock_query.filter.return_value = mock_query
+        mock_query.order_by.return_value = mock_query
+        mock_query.limit.return_value = mock_query
+        mock_query.offset.return_value = mock_query
+        mock_query.all.return_value = quotes_page2
+
+        mock_db.query.return_value = mock_query
+
+        service = DatabaseQuoteService(mock_db)
+
+        # Get quotes with offset=20 (page 2)
+        result = service.get_quotes_by_user(str(test_user.id), limit=20, offset=20)
+
+        # Verify offset was applied
+        mock_query.offset.assert_called_with(20)
+        assert len(result) == 5  # Only 5 quotes returned
+
+    def test_get_quotes_offset_beyond_total(self, test_user):
+        """Test get_quotes_by_user with offset beyond total returns empty"""
+        from database import DatabaseQuoteService
+        from unittest.mock import Mock, MagicMock
+
+        mock_db = Mock()
+
+        # Mock query chain to return empty list
+        mock_query = MagicMock()
+        mock_query.filter.return_value = mock_query
+        mock_query.order_by.return_value = mock_query
+        mock_query.limit.return_value = mock_query
+        mock_query.offset.return_value = mock_query
+        mock_query.all.return_value = []  # No quotes beyond offset
+
+        mock_db.query.return_value = mock_query
+
+        service = DatabaseQuoteService(mock_db)
+
+        # Get quotes with offset=1000 (way beyond total)
+        result = service.get_quotes_by_user(str(test_user.id), limit=20, offset=1000)
+
+        # Verify returns empty list
+        assert result == []
+        assert len(result) == 0
+
+    def test_get_quotes_default_pagination(self, test_user, sample_quote_data):
+        """Test get_quotes_by_user uses default limit when not specified"""
+        from database import DatabaseQuoteService
+        from unittest.mock import Mock, MagicMock
+
+        mock_db = Mock()
+
+        # Create 25 mock quotes
+        quotes = []
+        for i in range(25):
+            quote = MockQuote(
+                id=i+1,
+                user_id=test_user.id,
+                client_name=f"Default Client {i+1}",
+                total_final=Decimal("1000.00"),
+                materials_subtotal=Decimal("800.00"),
+                labor_subtotal=Decimal("200.00"),
+                items_count=1,
+                quote_data=sample_quote_data
+            )
+            quotes.append(quote)
+
+        # Mock query - should return first 20 (default limit)
+        mock_query = MagicMock()
+        mock_query.filter.return_value = mock_query
+        mock_query.order_by.return_value = mock_query
+        mock_query.limit.return_value = mock_query
+        mock_query.offset.return_value = mock_query
+        mock_query.all.return_value = quotes[:20]
+
+        mock_db.query.return_value = mock_query
+
+        service = DatabaseQuoteService(mock_db)
+
+        # Get quotes without specifying limit (should use default of 20)
+        result = service.get_quotes_by_user(str(test_user.id))
+
+        # Verify default limit was used
+        assert len(result) <= 20  # Should not exceed default limit
