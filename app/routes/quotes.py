@@ -14,10 +14,9 @@ from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
-from database import get_db, User, DatabaseQuoteService, DatabaseColorService
+from database import get_db, User, DatabaseQuoteService, DatabaseColorService, DatabaseCompanyService
 from services.product_bom_service_db import ProductBOMServiceDB
 from services.pdf_service import PDFQuoteService
-from services.database import DatabaseCompanyService
 from app.dependencies.auth import get_current_user_flexible, get_current_user_from_cookie
 from security.formula_evaluator import formula_evaluator
 from config import settings
