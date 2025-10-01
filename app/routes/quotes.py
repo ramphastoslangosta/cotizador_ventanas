@@ -348,6 +348,9 @@ async def quotes_list_page(
     total_quotes = len(all_quotes)
     total_pages = (total_quotes + per_page - 1) // per_page
 
+    from datetime import date
+    today = date.today()
+
     return templates.TemplateResponse("quotes_list.html", {
         "request": request,
         "title": "Mis Cotizaciones",
@@ -356,7 +359,8 @@ async def quotes_list_page(
         "page": page,
         "per_page": per_page,
         "total_quotes": total_quotes,
-        "total_pages": total_pages
+        "total_pages": total_pages,
+        "today": today
     })
 
 
