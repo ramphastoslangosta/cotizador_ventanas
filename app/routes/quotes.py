@@ -453,8 +453,9 @@ async def edit_quote_page(
         "request": request,
         "title": f"Editar Cotización #{quote.id}",
         "user": user,
+        "quote_id": quote.id,  # Template expects 'quote_id'
         "quote": quote,
-        "products": app_products_json_compatible,  # Template expects 'products'
+        "products": app_products_json_compatible,
         "glass_types": glass_types_display,
         "window_types": window_types_display,
         "aluminum_lines": aluminum_lines_display,
