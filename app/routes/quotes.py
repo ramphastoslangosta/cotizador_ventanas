@@ -657,7 +657,10 @@ async def get_quote_edit_data(
     current_user: User = Depends(get_current_user_flexible),
     db: Session = Depends(get_db)
 ):
-    """Get quote data formatted for editing (QE-001)"""
+    """Get quote data formatted for editing (QE-001)
+
+    HOTFIX-20251001-001: Fixed to flatten quote_data JSONB for template compatibility
+    """
     try:
         quote_service = DatabaseQuoteService(db)
         quote = quote_service.get_quote_by_id(quote_id, current_user.id)
@@ -665,7 +668,10 @@ async def get_quote_edit_data(
         if not quote:
             raise HTTPException(status_code=404, detail="Cotización no encontrada")
 
-        # Return quote data in format suitable for editing
+        # Extract quote_data JSONB
+        quote_data = quote.quote_data or {}
+
+        # Return flattened structure that matches JavaScript expectations
         return {
             "quote_id": quote.id,
             "client": {
@@ -674,8 +680,12 @@ async def get_quote_edit_data(
                 "phone": quote.client_phone,
                 "address": quote.client_address
             },
-            "quote_data": quote.quote_data,
-            "notes": quote.notes
+            "items": quote_data.get("items", []),
+            "profit_margin": quote_data.get("profit_margin", 0.25),
+            "indirect_costs_rate": quote_data.get("indirect_costs_rate", 0.15),
+            "tax_rate": quote_data.get("tax_rate", 0.16),
+            "labor_rate_per_m2_override": quote_data.get("labor_rate_per_m2_override"),
+            "notes": quote.notes or ""
         }
 
     except HTTPException:
