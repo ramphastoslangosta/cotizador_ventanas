@@ -454,11 +454,10 @@ async def edit_quote_page(
         "title": f"Editar Cotización #{quote.id}",
         "user": user,
         "quote": quote,
-        "app_materials": app_materials_json_compatible,
-        "app_products": app_products_json_compatible,
+        "products": app_products_json_compatible,  # Template expects 'products'
+        "glass_types": glass_types_display,
         "window_types": window_types_display,
         "aluminum_lines": aluminum_lines_display,
-        "glass_types": glass_types_display,
     })
 
 
