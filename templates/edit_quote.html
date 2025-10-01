@@ -206,9 +206,13 @@ function populateForm() {
 function populateItems() {
     const container = document.getElementById('items-container');
     container.innerHTML = '';
-    
+
     if (quoteData.items && quoteData.items.length > 0) {
         quoteData.items.forEach((item, index) => {
+            // HOTFIX-20251001-001: Normalize glass type to string
+            if (typeof item.selected_glass_type === 'object') {
+                item.selected_glass_type = item.selected_glass_type.value || item.selected_glass_type;
+            }
             addItemToContainer(item, index);
         });
     } else {
@@ -218,11 +222,16 @@ function populateItems() {
 
 function addItemToContainer(item, index) {
     const container = document.getElementById('items-container');
-    
+
     // Find product name
     const product = products.find(p => p.id === item.product_bom_id);
     const productName = product ? product.name : 'Producto no encontrado';
-    
+
+    // HOTFIX-20251001-001: Normalize glass type to string (handle object or string)
+    const glassTypeValue = typeof item.selected_glass_type === 'object'
+        ? item.selected_glass_type.value || item.selected_glass_type
+        : item.selected_glass_type;
+
     const itemHtml = `
         <div class="border rounded p-3 mb-3" id="item-${index}">
             <div class="d-flex justify-content-between align-items-start mb-3">
@@ -242,7 +251,7 @@ function addItemToContainer(item, index) {
                 <div class="col-md-6 mb-3">
                     <label class="form-label">Tipo de Vidrio</label>
                     <select class="form-select" id="glass_type_${index}" onchange="updateItemCalculation()">
-                        ${glassTypes.map(gt => `<option value="${gt.value}" ${gt.value === item.selected_glass_type ? 'selected' : ''}>${gt.label}</option>`).join('')}
+                        ${glassTypes.map(gt => `<option value="${gt.value}" ${gt.value === glassTypeValue ? 'selected' : ''}>${gt.label}</option>`).join('')}
                     </select>
                 </div>
                 <div class="col-md-3 mb-3">

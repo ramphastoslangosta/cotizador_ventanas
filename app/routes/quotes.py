@@ -601,7 +601,13 @@ async def update_quote(
     current_user: User = Depends(get_current_user_flexible),
     db: Session = Depends(get_db)
 ):
-    """Update existing quote (QE-001)"""
+    """Update existing quote (QE-001)
+
+    HOTFIX-20251001-001: Added validation error debugging
+    """
+    print(f"DEBUG: Received quote_request with {len(quote_request.items)} items")
+    for idx, item in enumerate(quote_request.items):
+        print(f"DEBUG: Item {idx}: glass_type={item.selected_glass_type}, product_bom_id={item.product_bom_id}")
     try:
         # Verify quote exists and belongs to user
         quote_service = DatabaseQuoteService(db)
