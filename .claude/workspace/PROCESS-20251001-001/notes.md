@@ -157,3 +157,13 @@ Track any blockers here:
 - Test Result: ✅ Passed
 - Commit: f1bd1a1
 - Issues: None
+
+### Step 5: Write Overview and When to Use Sections
+- Started: 16:27
+- Completed: 16:29
+- Duration: 2 minutes
+- Files Modified:
+  * docs/ROUTE-EXTRACTION-PROTOCOL.md (added sections 1-2)
+- Test Result: ✅ Passed (302 words, both sections present)
+- Commit: 6a3afff
+- Issues: None
