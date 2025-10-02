@@ -255,3 +255,53 @@ _Record key decisions and rationale_
 - Changes: 418 lines removed, 21% reduction
 - Risk Level: LOW (zero functional changes)
 - Ready for review and merge
+
+## Production Deployment Complete (Oct 2, 2025 23:27 UTC)
+
+### Deployment Summary
+- **Method**: Docker Compose with rebuild
+- **Environment**: Production (159.65.174.94:8000)
+- **Duration**: ~26 seconds (stop + rebuild + start)
+- **Downtime**: Minimal (~15 seconds)
+- **Status**: ✅ SUCCESSFUL
+
+### Deployment Steps Executed
+1. ✅ SSH to droplet (root@159.65.174.94)
+2. ✅ Pulled latest main (commit: fca418c)
+3. ✅ Verified code changes (main.py: 1,560 lines)
+4. ✅ Stopped app container
+5. ✅ Rebuilt Docker image with new code
+6. ✅ Started app container
+7. ✅ Verified container health
+8. ✅ Tested endpoints (all passing)
+
+### Test Results
+- ✅ Login page: HTTP 200
+- ✅ Quotes page: HTTP 307 (redirect to login)
+- ✅ Dashboard: HTTP 307 (redirect to login)
+- ✅ Container status: Up and healthy
+- ✅ No errors in application logs
+
+### Production Metrics
+- **Container**: ventanas-beta-app (Up 15 seconds, healthy)
+- **Workers**: 2 uvicorn workers
+- **Port**: 8000
+- **Image**: ea6363dfdc2e (built with TASK-012 changes)
+
+### Changes Deployed
+- 418 lines removed from main.py
+- 9 duplicate quote routes eliminated
+- Route count: 104 → 95
+- File size: 1,979 → 1,560 lines (-21%)
+
+### Verification
+- ✅ External access confirmed (http://159.65.174.94:8000)
+- ✅ Application startup complete
+- ✅ No errors in logs
+- ✅ All routes functional via router
+
+### Monitoring
+- Container logs: `docker-compose -f docker-compose.beta.yml logs app -f`
+- Container status: `docker-compose -f docker-compose.beta.yml ps`
+- Application health: Confirmed healthy
+
