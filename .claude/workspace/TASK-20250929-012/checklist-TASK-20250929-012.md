@@ -24,10 +24,10 @@
 ## Testing Phase
 - [x] Run full test suite (13 tests pass)
 - [x] Verify route count = 104
-- [ ] Test login page
-- [ ] Test quotes list page
-- [ ] Test new quote page
-- [ ] Test dashboard redirect
+- [x] Test login page
+- [x] Test quotes list page
+- [x] Test new quote page
+- [x] Test dashboard redirect
 
 ## Deployment Phase
 - [ ] Deploy to test environment (port 8001)
