@@ -33,7 +33,7 @@
 - [x] Deploy to test environment (N/A - local dev)
 - [x] Manual smoke test
 - [x] Push to remote branch
-- [ ] Create pull request
+- [x] Create pull request (PR #9)
 - [ ] Get PR approval
 - [ ] Merge to main
 - [ ] Deploy to production
