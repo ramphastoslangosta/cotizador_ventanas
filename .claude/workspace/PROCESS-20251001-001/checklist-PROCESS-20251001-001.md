@@ -85,29 +85,29 @@
 - [x] Timeline for duplicate removal
 
 ### Section 7: Rollback Plan
-- [ ] Quick rollback procedure (router fails)
-- [ ] Full rollback procedure (issues discovered later)
-- [ ] Verification after rollback
-- [ ] Communication plan for rollback
+- [x] Quick rollback procedure (router fails)
+- [x] Full rollback procedure (issues discovered later)
+- [x] Verification after rollback
+- [x] Communication plan for rollback
 
 ### Section 8: Case Studies
-- [ ] Case Study 1: HOTFIX-20251001-001 (What NOT to do)
-  - [ ] Incident summary
-  - [ ] What went wrong
-  - [ ] Impact and resolution
-  - [ ] Lessons learned
-- [ ] Case Study 2: TASK-001 Auth Routes (What to DO)
-  - [ ] Successful extraction summary
-  - [ ] Why it succeeded
-  - [ ] Best practices demonstrated
-- [ ] Side-by-side comparison
+- [x] Case Study 1: HOTFIX-20251001-001 (What NOT to do)
+  - [x] Incident summary
+  - [x] What went wrong
+  - [x] Impact and resolution
+  - [x] Lessons learned
+- [x] Case Study 2: TASK-001 Auth Routes (What to DO)
+  - [x] Successful extraction summary
+  - [x] Why it succeeded
+  - [x] Best practices demonstrated
+- [x] Side-by-side comparison
 
 ### Section 9: Quick Reference
-- [ ] Pre-extraction quick checklist (1 page)
-- [ ] Extraction quick checklist (1 page)
-- [ ] Testing quick checklist (1 page)
-- [ ] Deployment quick checklist (1 page)
-- [ ] Emergency rollback quick steps (1 page)
+- [x] Pre-extraction quick checklist (1 page)
+- [x] Extraction quick checklist (1 page)
+- [x] Testing quick checklist (1 page)
+- [x] Deployment quick checklist (1 page)
+- [x] Emergency rollback quick steps (1 page)
 
 ---
 
