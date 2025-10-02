@@ -162,6 +162,20 @@ Edit the `quantity_formula` field in product BOMs. **IMPORTANT**: All formulas a
 ### Database Schema Changes
 Modify SQLAlchemy models in `database.py`. Consider using Alembic for migrations in production.
 
+### Route Extraction Protocol
+When extracting routes from main.py to modular routers, **always follow the Route Extraction Protocol**:
+
+📖 **See:** [docs/ROUTE-EXTRACTION-PROTOCOL.md](docs/ROUTE-EXTRACTION-PROTOCOL.md)
+
+**Key principles:**
+- Keep original route until new router verified in production
+- Extract ALL data processing to presenter classes (not just routes)
+- Add integration tests for template rendering
+- Deploy to test environment first (24h monitoring)
+- Monitor production for 1 week before removing duplicates
+
+**Critical:** This protocol was created after HOTFIX-20251001-001 to prevent incomplete route extractions that cause production incidents. Template compatibility and data processing extraction are MANDATORY.
+
 ### Testing and Quality Assurance
 - **Sample Data**: Automatically initialized on startup via `initialize_sample_data()` function
 - **Test Suite**: Comprehensive test coverage with pytest configuration
