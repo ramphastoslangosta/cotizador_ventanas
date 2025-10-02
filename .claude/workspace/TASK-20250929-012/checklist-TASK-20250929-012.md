@@ -43,8 +43,8 @@
 - [x] Update tasks.csv (status = completed)
 - [x] Update TASK_STATUS.md
 - [x] Create completion summary
-- [ ] Archive workspace
-- [ ] Update progress dashboard
+- [x] Archive workspace
+- [x] Update progress dashboard
 
 ## Cleanup Phase
 - [ ] Delete task branch (after merge)
