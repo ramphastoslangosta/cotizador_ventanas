@@ -46,16 +46,16 @@
 - [x] Examples included
 
 ### Section 3: Pre-Extraction Checklist
-- [ ] Route identification checklist (4+ items)
-- [ ] Dependency analysis checklist (4+ items)
-- [ ] Data processing logic checklist (4+ items)
-- [ ] Template requirements checklist (4+ items)
-- [ ] Test coverage analysis checklist (4+ items)
-- [ ] Deployment risk assessment (4+ items)
-- [ ] Rollback plan checklist (4+ items)
-- [ ] Bash commands for each checklist section
-- [ ] Code examples for anti-patterns
-- [ ] Total: 25+ checklist items
+- [x] Route identification checklist (4+ items)
+- [x] Dependency analysis checklist (4+ items)
+- [x] Data processing logic checklist (4+ items)
+- [x] Template requirements checklist (4+ items)
+- [x] Test coverage analysis checklist (4+ items)
+- [x] Deployment risk assessment (4+ items)
+- [x] Rollback plan checklist (4+ items)
+- [x] Bash commands for each checklist section
+- [x] Code examples for anti-patterns
+- [x] Total: 25+ checklist items
 
 ### Section 4: Extraction Steps
 - [ ] Step 4.1: Create router file
