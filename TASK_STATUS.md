@@ -473,3 +473,49 @@ Continue with Phase 2...
 *Last updated: 2025-10-01 22:00 UTC - After HOTFIX-20251001-002 completion*
 *Production: ✅ Stable | All Routers: ✅ Working | Tests: ✅ Comprehensive | Next: TASK-012 (Remove Duplicates)*
 *Generated with [Claude Code](https://claude.com/claude-code)*
+
+## TASK-012: Remove Duplicate Routes - COMPLETE ✅
+
+**Completed**: 2025-10-02 17:49:22
+**Branch**: refactor/cleanup-duplicate-routes-20250929
+**Lines Removed**: 418 lines from main.py
+**File Reduction**: 1,979 → 1,561 lines (-21%)
+**Route Count**: 104 → 95 (-9 duplicates)
+
+### Changes
+- ✅ Removed 9 duplicate quote routes (all moved to app/routes/quotes.py)
+- ✅ Auth routes already clean (no duplicates found)
+- ✅ Kept 1 unique PATCH route (not in router)
+- ✅ Maintained all functionality via router registration
+- ✅ Zero functional changes
+
+### Routes Removed
+1. GET /quotes/new (41 lines)
+2. POST /quotes/calculate_item (21 lines)
+3. POST /quotes/calculate (43 lines)
+4. POST /quotes/example (85 lines)
+5. GET /quotes/{quote_id} (36 lines)
+6. GET /quotes/{quote_id}/edit (47 lines)
+7. GET /quotes/{quote_id}/pdf (54 lines)
+8. PUT /api/quotes/{quote_id} (51 lines)
+9. GET /api/quotes/{quote_id}/edit-data (40 lines)
+
+### Verification
+- ✅ Application imports successfully
+- ✅ All routes functional via router
+- ✅ All critical page tests passed (6/6)
+- ✅ No broken imports or dependencies
+- ✅ Production-ready
+
+### Commits
+- 008f617: Remove duplicate quote routes (code changes)
+- 1189df4: Manual smoke testing (verification)
+- 3e6837e: Documentation updates
+
+### Task Status Update
+**Phase 1 Progress**: 4/6 tasks complete (67%) - TASK-012 COMPLETE
+
+Task completion verified through:
+- Code removal: 418 lines
+- Application testing: All routes working
+- Manual smoke tests: 6/6 passed
