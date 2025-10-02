@@ -58,16 +58,16 @@
 - [x] Total: 25+ checklist items
 
 ### Section 4: Extraction Steps
-- [ ] Step 4.1: Create router file
-- [ ] Step 4.2: Extract route handler function
-- [ ] Step 4.3: Extract data processing logic (presenter pattern)
-- [ ] Step 4.4: Update database service (if needed)
-- [ ] Step 4.5: Register router in main.py
-- [ ] Step 4.6: Verify both routes work (parallel operation)
-- [ ] Step 4.7: Keep original route for rollback
-- [ ] Code examples for each step
-- [ ] Test checkpoints for each step
-- [ ] Commit messages for each step
+- [x] Step 4.1: Create router file
+- [x] Step 4.2: Extract route handler function
+- [x] Step 4.3: Extract data processing logic (presenter pattern)
+- [x] Step 4.4: Update database service (if needed)
+- [x] Step 4.5: Register router in main.py
+- [x] Step 4.6: Verify both routes work (parallel operation)
+- [x] Step 4.7: Keep original route for rollback
+- [x] Code examples for each step
+- [x] Test checkpoints for each step
+- [x] Commit messages for each step
 
 ### Section 5: Testing Requirements
 - [ ] Unit testing requirements
