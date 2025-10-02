@@ -131,3 +131,13 @@ _Record key decisions and rationale_
 - HOTFIX-20251001-001 (Oct 1, 2025) - Quote routes
 
 **Lesson**: Always investigate before implementing - saved 3.5 hours of unnecessary work!
+
+### Step 1.2: Create Task Branch
+- Started: 17:04
+- Completed: 17:04
+- Duration: ~1 minute
+- Branch Created: refactor/cleanup-duplicate-routes-20250929
+- Previous Branch: process/route-extraction-protocol-20251001
+- Stash Created: WIP: Before TASK-012 cleanup
+- Status: ✅ Clean state verified
+- Issues: None
