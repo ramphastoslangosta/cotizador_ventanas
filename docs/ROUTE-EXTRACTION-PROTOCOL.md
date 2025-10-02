@@ -289,3 +289,581 @@ grep "ERROR" logs/app.log  # Should be empty
 **Estimated time:** 30-60 minutes (pays off in prevention)
 
 ---
+
+## 4. Extraction Steps
+
+**Critical Rule:** **NEVER remove the original route until the new router is verified in production.**
+
+### 4.1 Create Router File
+
+**Action:** Create new router file in `app/routes/`
+
+**File structure:**
+```
+app/
+├── routes/
+│   ├── __init__.py
+│   ├── auth.py          # Authentication routes
+│   ├── quotes.py        # Quote management routes
+│   ├── work_orders.py   # Work order routes
+│   └── [your_new_router].py  ← Create this
+```
+
+**Template:**
+```python
+# app/routes/[your_feature].py
+from fastapi import APIRouter, Depends, Request, HTTPException, status
+from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
+from sqlalchemy.orm import Session
+from typing import List
+
+# Import database and dependencies
+from database import get_db, [YourModels]
+from app.dependencies.auth import get_current_user_from_cookie
+from config import templates
+
+# Import services
+from database import [YourDatabaseServices]
+
+# Import models
+from models.[your_models] import [YourPydanticModels]
+
+# Create router
+router = APIRouter(
+    prefix="",  # Keep empty for backward compatibility
+    tags=["your-feature"]
+)
+
+# Routes will be added in next steps
+```
+
+**Commands:**
+```bash
+# Create router file
+touch app/routes/your_feature.py
+
+# Verify imports work
+python -c "from app.routes import your_feature; print('✓ Import successful')"
+```
+
+**Commit after this step:**
+```
+refactor: create [feature] router skeleton
+
+- Created app/routes/your_feature.py
+- Added router imports and structure
+- No routes implemented yet
+
+Task: PROCESS-20251001-001
+```
+
+---
+
+### 4.2 Extract Route Handler Function
+
+**Action:** Copy route function to new router file
+
+**Steps:**
+
+1. **Copy the entire route function** from `main.py`
+2. **Paste into router file**
+3. **Replace `@app.get/post/put/delete` with `@router.get/post/put/delete`**
+4. **Keep original in main.py commented out**
+
+**Example:**
+
+```python
+# In app/routes/quotes.py
+
+@router.get("/quotes", response_class=HTMLResponse)
+async def quotes_list_page(
+    request: Request,
+    page: int = Query(1, ge=1, description="Page number"),
+    page_size: int = Query(25, ge=1, le=100, description="Items per page"),
+    db: Session = Depends(get_db)
+):
+    """Quote list page with pagination"""
+    user = await get_current_user_from_cookie(request, db)
+    if not user:
+        return RedirectResponse(url="/login")
+
+    # ... rest of function (copied verbatim from main.py) ...
+```
+
+**In main.py:**
+```python
+# TASK-XXX: Route moved to app/routes/quotes.py (keep for rollback)
+# @app.get("/quotes", response_class=HTMLResponse)
+# async def quotes_list_page(request: Request, ...):
+#     ... (keep original code commented) ...
+```
+
+**Test immediately:**
+```bash
+# Verify syntax
+python -c "from app.routes.quotes import router; print(f'✓ Router has {len(router.routes)} routes')"
+```
+
+**Commit after this step:**
+```
+refactor: extract [route_name] to router
+
+- Copied route handler to app/routes/your_feature.py
+- Converted @app decorator to @router decorator
+- Original route commented in main.py for rollback
+
+Task: PROCESS-20251001-001
+```
+
+---
+
+### 4.3 Extract Data Processing Logic
+
+**⚠️ CRITICAL STEP - This is where HOTFIX-20251001-001 went wrong**
+
+**Action:** Identify and extract ALL data processing before template rendering
+
+**How to identify data processing:**
+
+```python
+# Look for these patterns in your route:
+
+# 1. List comprehensions
+processed_items = [transform(item) for item in raw_items]
+
+# 2. Dictionary building
+data = {"key": calculation(value), "total": sum(items)}
+
+# 3. Calculations
+total_area = sum(item.width * item.height for item in items)
+
+# 4. Formatting
+formatted_date = date.strftime("%Y-%m-%d")
+
+# 5. Filtering/sorting
+filtered = [x for x in items if x.status == "active"]
+```
+
+**Decision tree:**
+
+```
+Is there ANY code between database query and template rendering?
+    YES → Extract to Presenter class
+    NO → Route can return raw data directly
+```
+
+**Presenter Pattern (Recommended):**
+
+```python
+# app/presenters/quote_presenter.py
+
+class QuoteListPresenter:
+    """Processes raw Quote objects for template rendering"""
+
+    @staticmethod
+    def present(quotes: List[Quote]) -> List[dict]:
+        """
+        Convert raw Quote objects to template-ready dictionaries
+
+        Args:
+            quotes: Raw Quote objects from database
+
+        Returns:
+            List of dicts with calculated fields for template
+        """
+        processed_quotes = []
+
+        for quote in quotes:
+            # Extract quote_data
+            quote_data = quote.quote_data if quote.quote_data else {}
+            items = quote_data.get('items', [])
+
+            # Calculate derived fields
+            total_area = sum(
+                float(item.get('area_m2', 0)) * item.get('quantity', 1)
+                for item in items
+            )
+
+            price_per_m2 = (
+                float(quote.total_final) / total_area
+                if total_area > 0 else 0
+            )
+
+            # Get sample items for preview
+            sample_items = [
+                f"{item.get('window_type', 'N/A')} "
+                f"{item.get('width_cm')}x{item.get('height_cm')}cm"
+                for item in items[:3]
+            ]
+
+            # Build template-ready dict
+            processed_quotes.append({
+                'id': quote.id,
+                'client_name': quote.client_name,
+                'created_at': quote.created_at,
+                'total_final': quote.total_final,
+                'items_count': len(items),
+                'total_area': round(total_area, 2),
+                'price_per_m2': round(price_per_m2, 2),
+                'sample_items': sample_items
+            })
+
+        return processed_quotes
+```
+
+**Update router to use presenter:**
+
+```python
+# app/routes/quotes.py
+
+from app.presenters.quote_presenter import QuoteListPresenter
+
+@router.get("/quotes", response_class=HTMLResponse)
+async def quotes_list_page(request: Request, db: Session = Depends(get_db)):
+    user = await get_current_user_from_cookie(request, db)
+    if not user:
+        return RedirectResponse(url="/login")
+
+    # Get raw data from database
+    quote_service = DatabaseQuoteService(db)
+    quotes = quote_service.get_quotes_by_user(user.id, limit=50)
+
+    # ✅ PROCESS DATA via presenter
+    processed_quotes = QuoteListPresenter.present(quotes)
+
+    # Pass processed data to template
+    return templates.TemplateResponse("quotes_list.html", {
+        "request": request,
+        "title": "Mis Cotizaciones",
+        "user": user,
+        "quotes": processed_quotes  # ← Processed, not raw
+    })
+```
+
+**Test checkpoint:**
+```bash
+# Test presenter in isolation
+python -c "
+from app.presenters.quote_presenter import QuoteListPresenter
+print('✓ QuoteListPresenter imported')
+
+# Test with mock data
+mock_quote = type('Quote', (), {
+    'id': 1,
+    'client_name': 'Test',
+    'created_at': '2025-01-01',
+    'total_final': 1000,
+    'quote_data': {'items': [{'area_m2': 2.5, 'quantity': 2}]}
+})
+
+result = QuoteListPresenter.present([mock_quote])
+assert 'total_area' in result[0], 'Missing calculated field'
+print('✓ Presenter processes data correctly')
+"
+```
+
+**Commit after this step:**
+```
+refactor: extract data processing to presenter
+
+- Created app/presenters/quote_presenter.py
+- Moved 85 lines of processing logic from route
+- Router now returns processed data to template
+- Fixes pattern that caused HOTFIX-20251001-001
+
+Task: PROCESS-20251001-001
+```
+
+---
+
+### 4.4 Update Database Service (If Needed)
+
+**Action:** Check if database service needs pagination, filtering, or sorting
+
+**HOTFIX-20251001-001 Lesson:** Database service lacked `offset` parameter
+
+**Before:**
+```python
+# database.py (WRONG - missing offset)
+def get_quotes_by_user(self, user_id: uuid.UUID, limit: int = 50):
+    return (self.db.query(Quote)
+            .filter(Quote.user_id == user_id)
+            .order_by(Quote.created_at.desc())
+            .limit(limit)  # ← Missing .offset()
+            .all())
+```
+
+**After:**
+```python
+# database.py (CORRECT - with offset)
+def get_quotes_by_user(self, user_id: uuid.UUID, limit: int = 50, offset: int = 0):
+    """
+    Get quotes by user with pagination support
+
+    Args:
+        user_id: User UUID
+        limit: Maximum results to return
+        offset: Number of results to skip (for pagination)
+    """
+    return (self.db.query(Quote)
+            .filter(Quote.user_id == user_id)
+            .order_by(Quote.created_at.desc())
+            .offset(offset)  # ← Added for pagination
+            .limit(limit)
+            .all())
+```
+
+**Test database service:**
+```bash
+python -c "
+from database import SessionLocal, DatabaseQuoteService
+import uuid
+
+db = SessionLocal()
+service = DatabaseQuoteService(db)
+
+# Test with offset
+user_id = uuid.uuid4()
+page_1 = service.get_quotes_by_user(user_id, limit=10, offset=0)
+page_2 = service.get_quotes_by_user(user_id, limit=10, offset=10)
+
+print(f'✓ Pagination works: Page 1={len(page_1)}, Page 2={len(page_2)}')
+db.close()
+"
+```
+
+**Commit after this step:**
+```
+fix(database): add offset parameter for pagination
+
+- Added offset parameter to get_quotes_by_user()
+- Enables proper pagination in quote routes
+- Prevents pagination bug from HOTFIX-20251001-001
+
+Task: PROCESS-20251001-001
+```
+
+---
+
+### 4.5 Register Router in main.py
+
+**Action:** Add router to main.py using `app.include_router()`
+
+**Steps:**
+
+1. Import router at top of main.py
+2. Call `app.include_router()` after middleware setup
+3. **Keep original route commented** (DO NOT DELETE YET)
+
+**Code:**
+
+```python
+# main.py (add at top with other imports)
+from app.routes import quotes as quote_routes
+
+# main.py (add after middleware, before route definitions)
+# === TASK-XXX: Add Quotes Router ===
+from app.routes import quotes as quote_routes
+app.include_router(quote_routes.router)
+# NOTE: Original route kept below for rollback (remove after verification)
+```
+
+**Test router registration:**
+```bash
+# Check app routes
+python -c "
+import main
+routes = [r for r in main.app.routes if hasattr(r, 'path')]
+quote_routes = [r for r in routes if '/quotes' in r.path]
+print(f'✓ Found {len(quote_routes)} quote routes')
+for route in quote_routes:
+    print(f'  - {list(route.methods)} {route.path}')
+"
+```
+
+**Expected output:**
+```
+✓ Found 2 quote routes
+  - ['GET'] /quotes  ← From router
+  - ['GET'] /quotes  ← From main.py (commented but still registered if not properly commented)
+```
+
+**⚠️ If you see duplicate routes, verify original is properly commented in main.py**
+
+**Commit after this step:**
+```
+refactor: register quotes router in main.py
+
+- Imported app.routes.quotes
+- Registered router with app.include_router()
+- Original route kept commented for rollback
+- Verified router registration with route count
+
+Task: PROCESS-20251001-001
+```
+
+---
+
+### 4.6 Verify Both Routes Work (Parallel Operation)
+
+**Action:** Test that BOTH the router route and original route work identically
+
+**Why:** This catches integration issues before deployment
+
+**Test checklist:**
+
+- [ ] **Start app:** `python main.py` or `docker-compose up`
+- [ ] **Test router route:** Should work via `app.include_router()`
+- [ ] **Test original route:** Should work if uncommented temporarily
+- [ ] **Compare responses:** Identical HTML/JSON output
+- [ ] **Test error cases:** 401, 404, 500 scenarios
+
+**Test script:**
+```bash
+# test_both_routes.sh
+
+echo "🔄 Testing parallel operation..."
+
+# Start app in background
+python main.py &
+APP_PID=$!
+sleep 5  # Wait for startup
+
+# Test router route
+echo "Testing router route..."
+ROUTER_RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/quotes)
+echo "  Router: $ROUTER_RESPONSE"
+
+# Temporarily uncomment original route (manual step)
+echo "⚠️  Manually uncomment original route in main.py, then press Enter"
+read
+
+# Restart app
+kill $APP_PID
+python main.py &
+APP_PID=$!
+sleep 5
+
+# Test original route
+ORIGINAL_RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/quotes)
+echo "  Original: $ORIGINAL_RESPONSE"
+
+# Stop app
+kill $APP_PID
+
+# Compare
+if [ "$ROUTER_RESPONSE" = "$ORIGINAL_RESPONSE" ]; then
+    echo "✅ Both routes return same status code"
+else
+    echo "❌ Routes return different status codes!"
+    echo "   Router: $ROUTER_RESPONSE"
+    echo "   Original: $ORIGINAL_RESPONSE"
+    exit 1
+fi
+```
+
+**Manual verification:**
+1. Access http://localhost:8000/quotes in browser
+2. Verify page renders correctly
+3. Check browser console for errors
+4. Test pagination, filters, sorting
+5. Verify all links work
+
+**Commit after this step:**
+```
+test: verify router and original routes work identically
+
+- Tested router route returns correct status codes
+- Verified HTML rendering matches original
+- Confirmed no JavaScript errors in console
+- Both routes operate in parallel successfully
+
+Task: PROCESS-20251001-001
+```
+
+---
+
+### 4.7 Keep Original Route for Rollback
+
+**Action:** Leave original route commented in main.py
+
+**Format:**
+
+```python
+# ============================================================================
+# TASK-XXX: ROUTE EXTRACTION - DO NOT REMOVE UNTIL PRODUCTION VERIFIED
+# ============================================================================
+# This route was extracted to app/routes/quotes.py
+# Kept here for emergency rollback if router fails in production
+#
+# To rollback:
+# 1. Uncomment this route
+# 2. Comment out app.include_router(quote_routes.router)
+# 3. Restart app
+#
+# REMOVAL TIMELINE:
+# - Test environment: After 24 hours of successful operation
+# - Production: After 1 week of successful operation with no errors
+#
+# @app.get("/quotes", response_class=HTMLResponse)
+# async def quotes_list_page(request: Request, db: Session = Depends(get_db)):
+#     user = await get_current_user_from_cookie(request, db)
+#     if not user:
+#         return RedirectResponse(url="/login")
+#
+#     quote_service = DatabaseQuoteService(db)
+#     quotes = quote_service.get_quotes_by_user(user.id, limit=50)
+#
+#     # [Original processing logic kept here...]
+#     processed_quotes = []
+#     for quote in quotes:
+#         # ... all processing ...
+#         processed_quotes.append({...})
+#
+#     return templates.TemplateResponse("quotes_list.html", {
+#         "request": request,
+#         "quotes": processed_quotes,
+#         ...
+#     })
+#
+# ============================================================================
+```
+
+**Benefits:**
+- Easy emergency rollback (uncomment + restart)
+- Code reference for debugging
+- Prevents "what did the old code do?" questions
+
+**Timeline for removal:**
+- **Test environment:** 24-48 hours after successful deployment
+- **Production:** 1 week after successful deployment with zero errors
+
+**Commit after this step:**
+```
+docs: document rollback process for extracted route
+
+- Added detailed rollback instructions
+- Kept original route commented with timeline
+- Specified removal criteria (1 week zero errors)
+
+Task: PROCESS-20251001-001
+```
+
+---
+
+### Extraction Steps Summary
+
+**Completed when:**
+1. ✅ Router file created (`app/routes/your_feature.py`)
+2. ✅ Route handler extracted to router
+3. ✅ Data processing extracted to presenter (if needed)
+4. ✅ Database service updated (pagination, filtering)
+5. ✅ Router registered in main.py
+6. ✅ Both routes verified working
+7. ✅ Original route kept for rollback
+
+**Total commits:** 7 atomic commits
+
+**Next:** Proceed to Testing Requirements (Section 5)
+
+---
