@@ -162,3 +162,45 @@ _Record key decisions and rationale_
 - main.py lines 742-1265: 10 quote-related routes
 - All have corresponding routes in app/routes/quotes.py
 - Safe to remove from main.py (router handles all functionality)
+
+### Step 3.1: Remove Duplicate Auth Routes
+- Started: 17:10
+- Completed: 17:10
+- Duration: <1 minute
+- **Finding**: NO duplicate auth routes found in main.py
+- Auth routes: 7 routes in app/routes/auth.py (login, register, logout)
+- main.py: 0 auth routes (already cleaned up in TASK-20250929-001)
+- Action: No code changes needed
+- Status: ✅ N/A - Already clean
+
+### Step 3.2: Remove Duplicate Quote Routes
+- Started: 17:12
+- Completed: 17:15
+- Duration: ~3 minutes
+- Routes Removed: 9 duplicate quote routes (418 lines)
+- Routes Kept: 1 unique PATCH route (not in router)
+- File Reduction: 1,979 → 1,561 lines (-21%)
+- Route Count: 104 → 95 routes (-9 duplicates)
+- Test Result: ✅ All tests passed
+- Commit: 008f617
+- Status: ✅ Complete
+
+**Duplicates Removed**:
+1. GET /quotes/new (lines 742-782)
+2. POST /quotes/calculate_item (lines 784-804)
+3. POST /quotes/calculate (lines 806-848)
+4. POST /quotes/example (lines 850-934)
+5. GET /quotes/{quote_id} (lines 936-971)
+6. GET /quotes/{quote_id}/edit (lines 973-1019)
+7. GET /quotes/{quote_id}/pdf (lines 1125-1178)
+8. PUT /api/quotes/{quote_id} (lines 1180-1230)
+9. GET /api/quotes/{quote_id}/edit-data (lines 1265-1304)
+
+**Route Kept** (unique, not a duplicate):
+- PATCH /api/quotes/{quote_id}/client (lines 1232-1263)
+
+**Verification**:
+- ✅ Application imports successfully
+- ✅ All quote routes functional via router
+- ✅ Unique PATCH route preserved
+- ✅ No broken imports or references

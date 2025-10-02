@@ -8,12 +8,12 @@
 - [x] Confirm duplicates exist (or document completion)
 
 ## Implementation Phase (if duplicates exist)
-- [ ] Remove duplicate auth routes
-- [ ] Test auth endpoints still work
-- [ ] Commit auth cleanup
-- [ ] Remove duplicate quote routes
-- [ ] Test quote endpoints still work
-- [ ] Commit quote cleanup
+- [x] Remove duplicate auth routes (N/A - already clean)
+- [x] Test auth endpoints still work (N/A)
+- [x] Commit auth cleanup (N/A)
+- [x] Remove duplicate quote routes (9 routes, 418 lines)
+- [x] Test quote endpoints still work
+- [x] Commit quote cleanup (008f617)
 
 ## Alternative Phase (if no duplicates)
 - [x] Document task already complete
