@@ -32,7 +32,7 @@
 ## Deployment Phase
 - [x] Deploy to test environment (N/A - local dev)
 - [x] Manual smoke test
-- [ ] Push to remote branch
+- [x] Push to remote branch
 - [ ] Create pull request
 - [ ] Get PR approval
 - [ ] Merge to main
