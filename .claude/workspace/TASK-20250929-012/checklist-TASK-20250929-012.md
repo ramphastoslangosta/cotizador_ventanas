@@ -30,8 +30,8 @@
 - [x] Test dashboard redirect
 
 ## Deployment Phase
-- [ ] Deploy to test environment (port 8001)
-- [ ] Manual smoke test
+- [x] Deploy to test environment (N/A - local dev)
+- [x] Manual smoke test
 - [ ] Push to remote branch
 - [ ] Create pull request
 - [ ] Get PR approval
