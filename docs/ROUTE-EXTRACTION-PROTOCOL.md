@@ -1186,3 +1186,363 @@ TOTAL                                 203     20    90%
 **Estimated testing time:** 2-4 hours for comprehensive test suite
 
 ---
+
+## 6. Deployment Protocol
+
+**Critical:** Deploy to test environment first. Never deploy directly to production.
+
+### 6.1 Pre-Deployment Checklist
+
+**Before deploying, verify:**
+
+- [ ] All tests pass (unit + integration + template)
+- [ ] Coverage meets thresholds (80%+)
+- [ ] Code review completed and approved
+- [ ] Database migrations ready (if applicable)
+- [ ] Rollback plan documented and tested
+- [ ] Monitoring alerts configured
+
+**Commands:**
+```bash
+# Run full test suite
+pytest tests/ -v --cov=app --cov-fail-under=80
+
+# Verify no uncommitted changes
+git status
+
+# Verify branch is up to date
+git fetch origin
+git log --oneline origin/main..HEAD
+```
+
+---
+
+### 6.2 Test Environment Deployment
+
+**Purpose:** Verify router works in production-like environment
+
+**Steps:**
+
+1. **Deploy to test environment**
+```bash
+# SSH into test server
+ssh user@test-server
+
+# Navigate to application directory
+cd /app
+
+# Pull latest code
+git fetch origin
+git checkout feature/route-extraction-branch
+git pull origin feature/route-extraction-branch
+
+# Rebuild with no cache
+docker-compose -f docker-compose.test.yml build --no-cache app
+
+# Restart application
+docker-compose -f docker-compose.test.yml up -d app
+
+# Wait for startup
+sleep 10
+```
+
+2. **Verify deployment**
+```bash
+# Check container is running
+docker ps | grep app
+
+# Check application logs
+docker logs test-app --tail 50
+
+# Verify no errors in startup
+docker logs test-app 2>&1 | grep -i error
+```
+
+3. **Smoke test critical endpoints**
+```bash
+# Test quotes list (unauthenticated - should redirect)
+curl -I http://test-server:8000/quotes
+
+# Test quotes list (authenticated)
+curl -b "session_cookie=..." http://test-server:8000/quotes
+
+# Verify 200 OK response
+```
+
+4. **Monitor for 24 hours**
+- Check error logs every 4 hours
+- Verify user activity is normal
+- Test pagination, filtering, sorting
+- Monitor response times
+
+**Success criteria:**
+- ✅ Application starts without errors
+- ✅ Route responds with 200 OK
+- ✅ No 500 errors in logs for 24 hours
+- ✅ User-facing functionality works correctly
+
+---
+
+### 6.3 Production Deployment
+
+**Purpose:** Deploy verified router to production
+
+**Prerequisites:**
+- [ ] Test environment stable for 24+ hours
+- [ ] No critical issues found in testing
+- [ ] Rollback plan ready
+- [ ] Team notified of deployment window
+
+**Steps:**
+
+1. **Create deployment tag**
+```bash
+# Tag release for rollback
+git tag -a v1.2.3 -m "Deploy: Route extraction for quotes"
+git push origin v1.2.3
+```
+
+2. **Deploy to production**
+```bash
+# SSH into production server
+ssh user@production-server
+
+# Navigate to application directory
+cd /app
+
+# Pull latest code
+git fetch origin
+git checkout feature/route-extraction-branch
+git pull origin feature/route-extraction-branch
+
+# Backup current deployment
+docker commit production-app production-app-backup-$(date +%Y%m%d-%H%M%S)
+
+# Rebuild with no cache
+docker-compose -f docker-compose.prod.yml build --no-cache app
+
+# Restart application
+docker-compose -f docker-compose.prod.yml up -d app
+
+# Wait for startup
+sleep 15
+```
+
+3. **Immediate verification (within 5 minutes)**
+```bash
+# Check container is running
+docker ps | grep app
+
+# Check application logs
+docker logs production-app --tail 100
+
+# Test critical endpoints
+curl -I https://production-domain.com/quotes
+
+# Verify 200 OK or 307 redirect (auth required)
+```
+
+4. **Monitor closely (first 1 hour)**
+```bash
+# Watch logs in real-time
+docker logs production-app -f
+
+# Monitor error rate
+docker logs production-app | grep -i error | wc -l
+
+# Check response times
+curl -w "@curl-format.txt" -o /dev/null -s https://production-domain.com/quotes
+```
+
+**Success criteria:**
+- ✅ Application starts without errors
+- ✅ Route responds correctly (200 or 307)
+- ✅ No 500 errors in first hour
+- ✅ Response times < 500ms
+- ✅ No user complaints
+
+---
+
+### 6.4 Post-Deployment Monitoring
+
+**Timeline:** Monitor for 1 week before removing duplicate routes
+
+**Day 1 (Deployment Day):**
+- [ ] Check logs every hour for first 4 hours
+- [ ] Monitor error rate and response times
+- [ ] Test all route functionality manually
+- [ ] Verify pagination, filtering, sorting work
+- [ ] Check database query performance
+
+**Day 2-3:**
+- [ ] Check logs twice daily (morning, evening)
+- [ ] Monitor error rate trends
+- [ ] Verify no user complaints
+- [ ] Test edge cases (empty lists, large datasets)
+
+**Day 4-7:**
+- [ ] Check logs daily
+- [ ] Monitor weekly error rate
+- [ ] Collect user feedback
+- [ ] Document any issues found
+
+**Monitoring commands:**
+```bash
+# Check error count in last 24 hours
+docker logs production-app --since 24h | grep -i error | wc -l
+
+# Check response time stats
+docker logs production-app --since 24h | grep "GET /quotes" | awk '{print $NF}' | sort -n | tail -10
+
+# Check database query count
+docker logs production-app --since 1h | grep "SQL:" | wc -l
+```
+
+---
+
+### 6.5 Duplicate Route Removal
+
+**When:** After 1 week of successful production operation with zero errors
+
+**Steps:**
+
+1. **Final verification**
+```bash
+# Verify zero errors in last week
+docker logs production-app --since 168h | grep -i error | grep quotes | wc -l
+
+# Should return 0
+```
+
+2. **Remove duplicate route from main.py**
+```python
+# Before (main.py):
+# ============================================================================
+# TASK-XXX: ROUTE EXTRACTION - DO NOT REMOVE UNTIL PRODUCTION VERIFIED
+# ============================================================================
+# This route was extracted to app/routes/quotes.py
+# ... (all commented code) ...
+# ============================================================================
+
+# After (main.py):
+# [Completely removed - router now handles all /quotes requests]
+```
+
+3. **Deploy duplicate removal**
+```bash
+# Create new branch
+git checkout -b cleanup/remove-duplicate-quotes-route
+
+# Commit removal
+git add main.py
+git commit -m "cleanup: remove duplicate quotes route
+
+- Router verified stable for 1 week
+- Zero errors in production logs
+- All functionality working correctly
+
+Task: PROCESS-20251001-001 (Cleanup)"
+
+# Deploy using same process as 6.3
+```
+
+4. **Final verification**
+```bash
+# Verify route still works
+curl -I https://production-domain.com/quotes
+
+# Check logs for issues
+docker logs production-app --tail 50 | grep quotes
+```
+
+---
+
+### 6.6 Rollback Procedures
+
+**Scenario 1: Router fails immediately (within 1 hour)**
+
+```bash
+# Quick rollback - restore backup container
+docker stop production-app
+docker rm production-app
+docker run --name production-app production-app-backup-TIMESTAMP
+docker start production-app
+
+# Verify rollback
+curl -I https://production-domain.com/quotes
+
+# Should return 200 or 307
+```
+
+**Scenario 2: Issues discovered later (1-7 days)**
+
+```bash
+# Git rollback to previous version
+git revert [COMMIT_HASH]
+
+# Or restore from tag
+git checkout v1.2.2  # Previous stable version
+
+# Rebuild and deploy
+docker-compose -f docker-compose.prod.yml build --no-cache app
+docker-compose -f docker-compose.prod.yml up -d app
+
+# Verify rollback
+curl -I https://production-domain.com/quotes
+```
+
+**Scenario 3: Emergency - disable router registration**
+
+```python
+# main.py - Quick fix
+# Comment out router registration
+# from app.routes import quotes as quote_routes
+# app.include_router(quote_routes.router)
+
+# Uncomment original route
+@app.get("/quotes", response_class=HTMLResponse)
+async def quotes_list_page(request: Request, db: Session = Depends(get_db)):
+    # ... (original implementation) ...
+```
+
+```bash
+# Deploy emergency fix
+docker-compose -f docker-compose.prod.yml build --no-cache app
+docker-compose -f docker-compose.prod.yml restart app
+```
+
+---
+
+### Deployment Checklist Summary
+
+**Test Environment:**
+1. ✅ All tests pass
+2. ✅ Deploy to test environment
+3. ✅ Smoke test critical endpoints
+4. ✅ Monitor for 24 hours
+5. ✅ No errors or issues found
+
+**Production Environment:**
+1. ✅ Test environment stable for 24+ hours
+2. ✅ Create deployment tag
+3. ✅ Backup current deployment
+4. ✅ Deploy to production
+5. ✅ Immediate verification (5 minutes)
+6. ✅ Close monitoring (1 hour)
+7. ✅ Extended monitoring (1 week)
+8. ✅ Remove duplicate routes
+
+**Rollback Ready:**
+1. ✅ Backup container created
+2. ✅ Git tag created for rollback
+3. ✅ Rollback commands documented
+4. ✅ Emergency procedures tested
+
+**Timeline:**
+- Test deployment: Day 0
+- Test monitoring: 24 hours
+- Production deployment: Day 1
+- Production monitoring: 7 days
+- Duplicate removal: Day 8+
+
+---
