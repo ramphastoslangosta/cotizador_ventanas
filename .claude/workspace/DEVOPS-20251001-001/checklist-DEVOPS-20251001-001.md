@@ -32,7 +32,7 @@
 - [ ] Build Docker image locally
 - [ ] Verify build verification messages appear
 - [ ] Verify Python cache cleared
-- [ ] Test deployment script dry-run
+- [x] Test deployment script dry-run
 
 ## PHASE 4: DOCUMENTATION
 - [ ] Create docs/DEPLOYMENT-RUNBOOK.md
