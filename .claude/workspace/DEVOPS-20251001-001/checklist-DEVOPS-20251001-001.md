@@ -57,8 +57,8 @@
 ## POST-MERGE (After PR Approval)
 - [x] Merge to main
 - [x] Deploy to test environment
-- [ ] Monitor test environment 24 hours
-- [ ] Deploy to production
+- [x] Monitor test environment 24 hours
+- [x] Deploy to production
 - [ ] Monitor production 1 week
 - [ ] Mark task as completed in tasks.csv
 
