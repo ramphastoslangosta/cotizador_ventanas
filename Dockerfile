@@ -39,6 +39,13 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copiar código de la aplicación
 COPY . .
 
+# === DEVOPS-20251001-001: Clear Python bytecode cache ===
+# Prevents stale .pyc files from causing deployment issues
+RUN echo "=== Clearing Python cache ===" && \
+    find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true && \
+    find . -type f -name "*.pyc" -delete 2>/dev/null || true && \
+    echo "✅ Python cache cleared"
+
 # Crear directorios necesarios
 RUN mkdir -p /app/logs /app/static/uploads /app/backups \
     && chown -R appuser:appuser /app
