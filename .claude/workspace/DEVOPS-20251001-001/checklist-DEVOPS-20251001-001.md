@@ -24,7 +24,7 @@
 
 ### Docker Compose
 - [x] Update health check settings in docker-compose.beta.yml
-- [ ] Create docker-compose.test.yml
+- [x] Create docker-compose.test.yml
 - [ ] Validate YAML syntax
 
 ## PHASE 3: INTEGRATION & TESTING
