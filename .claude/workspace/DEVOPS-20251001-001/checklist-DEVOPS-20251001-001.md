@@ -36,7 +36,7 @@
 
 ## PHASE 4: DOCUMENTATION
 - [x] Create docs/DEPLOYMENT-RUNBOOK.md
-- [ ] Update CLAUDE.md with Docker deployment section
+- [x] Update CLAUDE.md with Docker deployment section
 - [ ] Create success criteria document
 - [ ] Document all troubleshooting steps
 
