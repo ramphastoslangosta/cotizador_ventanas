@@ -49,7 +49,7 @@
 - [x] Create pre-production checklist
 
 ## PHASE 6: FINALIZATION
-- [ ] Final code review
+- [x] Final code review
 - [ ] Push branch to remote
 - [ ] Create pull request
 - [ ] Update task notes
