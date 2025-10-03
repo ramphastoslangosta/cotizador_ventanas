@@ -56,9 +56,11 @@
 
 ## POST-MERGE (After PR Approval)
 - [x] Merge to main
-- [x] Deploy to test environment
-- [x] Monitor test environment 24 hours
-- [x] Deploy to production
+- [x] Deploy to test environment (REMOTE SERVER - 159.65.174.94:8001)
+- [x] Resolve Docker network isolation issue
+- [x] Verify test environment fully functional
+- [ ] Monitor test environment (awaiting approval for production)
+- [ ] Deploy to production (REMOTE SERVER - 159.65.174.94:8000)
 - [ ] Monitor production 1 week
 - [ ] Mark task as completed in tasks.csv
 

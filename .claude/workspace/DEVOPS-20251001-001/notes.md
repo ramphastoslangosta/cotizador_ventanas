@@ -438,3 +438,90 @@ According to docs/DEPLOYMENT-RUNBOOK.md and docs/TEST-ENVIRONMENT-GUIDE.md:
    bash scripts/deploy-production.sh
    ```
 
+---
+
+## REMOTE SERVER DEPLOYMENT (2025-10-03)
+
+### Remote Test Environment Deployment
+- Started: 15:30
+- Completed: 15:53
+- Duration: 23 minutes
+- Server: 159.65.174.94
+- Path: /home/ventanas/app-test
+- Port: 8001
+
+#### Actions Performed:
+1. **Git Pull to Remote Server**:
+   - Pulled latest code from main branch
+   - Resolved merge conflict with existing docker-compose.test.yml
+   - Command: `mv docker-compose.test.yml.old && git pull origin main`
+
+2. **Deployment Script Execution**:
+   - Executed: `bash scripts/deploy-test.sh`
+   - Build method: --no-cache (as per script)
+   - Build time: ~8 minutes
+   - Image created: app-test-app
+
+3. **Build Verification Results** ✅:
+   - ✅ main.py imports successfully
+   - ✅ app/routes exists
+   - ✅ config.py exists
+   - ✅ 95 routes registered
+   - ✅ Python cache cleared
+   - ✅ Build verification complete
+
+4. **Initial Issues & Resolutions**:
+
+   **Issue 1: Logs Permission Denied**
+   - Error: `PermissionError: [Errno 13] Permission denied: 'logs/application.log'`
+   - Fix: `mkdir -p logs/test && chmod -R 777 logs && docker restart`
+   - Result: ✅ Application started successfully
+
+   **Issue 2: Database Connection Error**
+   - Error: `POST /web/login 500 Internal Server Error`
+   - Root Cause: DATABASE_URL pointed to `postgres:5432` hostname
+   - Analysis: docker-compose.test.yml doesn't define postgres service
+   - Fix Step 1: Updated .env: `DATABASE_URL=postgresql://ventanas_user:simple123@ventanas-test-db:5432/ventanas_test_db`
+   - Result: Still failing (environment variable not reloaded)
+
+   **Issue 3: Container Recreation Needed**
+   - Fix Step 2: `docker-compose down && docker-compose up -d`
+   - Result: Still failing (different networks)
+
+   **Issue 4: Docker Network Isolation** (ROOT CAUSE)
+   - Problem: Containers on different networks
+     * ventanas-test-app → `app-test_default` network
+     * ventanas-test-db & ventanas-test-redis → `app-test_ventanas-test-network` network
+   - Fix: `docker network connect app-test_ventanas-test-network ventanas-test-app`
+   - Verification: `docker exec ventanas-test-app python -c "import psycopg2; conn = psycopg2.connect(...)"` ✅
+   - Result: ✅ Login successful, database fully functional
+
+#### Final Verification:
+- Test Result: ✅ **PASSED - Fully Functional**
+- Health Endpoint: `{"status":"healthy"}` at http://159.65.174.94:8001/api/health/
+- Login Page: ✅ Accessible at http://159.65.174.94:8001/
+- Login Functionality: ✅ POST /web/login returns 302 redirect
+- Dashboard: ✅ Accessible after login (200 OK)
+- Database Connection: ✅ PostgreSQL ventanas_test_db connected
+- Routes Verified: ✅ 95 routes registered
+- Container Status: ✅ Running and healthy
+
+#### DEVOPS-20251001-001 Improvements Verified:
+1. ✅ Python cache clearing functional in remote build
+2. ✅ Build verification displays all checkmarks in build output
+3. ✅ Deployment script (scripts/deploy-test.sh) executed successfully
+4. ✅ Health checks configured and working
+5. ✅ --no-cache flag used by deployment script
+
+#### Lessons Learned:
+1. **Docker Networking**: When using external/orphaned containers, ensure all containers are on the same network
+2. **Environment Variables**: Container recreation (down/up) required to load new .env values, restart not sufficient
+3. **Database Hostname**: Use actual container name (`ventanas-test-db`) not service name (`postgres`) when containers are external
+4. **Permissions**: Logs directory needs proper permissions before first startup
+
+#### Test Environment Status:
+- **Status**: ✅ **DEPLOYED AND VERIFIED**
+- **URL**: http://159.65.174.94:8001
+- **Ready for**: User acceptance testing
+- **Next Step**: Await approval for production deployment (port 8000)
+
