@@ -17,7 +17,7 @@
 - [ ] Test Dockerfile builds locally
 
 ### Deployment Scripts
-- [ ] Create scripts/deploy-production.sh
+- [x] Create scripts/deploy-production.sh
 - [ ] Create scripts/deploy-test.sh
 - [ ] Set execute permissions on scripts
 - [ ] Test script syntax validation
