@@ -46,6 +46,18 @@ RUN echo "=== Clearing Python cache ===" && \
     find . -type f -name "*.pyc" -delete 2>/dev/null || true && \
     echo "✅ Python cache cleared"
 
+# === DEVOPS-20251001-001: Build verification ===
+# Confirms code changes are present in container
+RUN echo "=== Build Verification ===" && \
+    echo "Checking main.py imports..." && \
+    python -c "import sys; sys.path.insert(0, '.'); import main; print('✅ main.py imports successfully')" && \
+    echo "Checking app structure..." && \
+    test -d app/routes && echo "✅ app/routes exists" || echo "⚠️ app/routes missing" && \
+    test -f config.py && echo "✅ config.py exists" || echo "❌ config.py missing" && \
+    echo "Checking route count..." && \
+    python -c "import main; print(f'✅ {len(main.app.routes)} routes registered')" && \
+    echo "=== Build verification complete ==="
+
 # Crear directorios necesarios
 RUN mkdir -p /app/logs /app/static/uploads /app/backups \
     && chown -R appuser:appuser /app
