@@ -397,3 +397,44 @@ grep "\[x\]" .claude/workspace/DEVOPS-20251001-001/checklist-DEVOPS-20251001-001
   * Health check endpoint mismatch (/api/health vs /api/health/) - minor, app functional
 - Conclusion: Production deployment successful, DEVOPS-20251001-001 improvements verified
 
+
+---
+
+## CORRECTION: Local vs Remote Deployment
+
+### Issue Identified (2025-10-03)
+**Problem:** Previous deployment was performed on localhost, but actual production/test environments are on remote server.
+
+**Actual Environment Details:**
+- **Server IP:** 159.65.174.94
+- **Production Path:** /home/ventanas/app
+- **Production URL:** http://159.65.174.94:8000 (via docker-compose.beta.yml)
+- **Test Path:** /home/ventanas/app-test
+- **Test URL:** http://159.65.174.94:8001 (via docker-compose.test.yml)
+
+**What Was Actually Done:**
+- ✅ Localhost deployment served as **script testing** and validation
+- ✅ Verified Docker build improvements work correctly
+- ✅ Confirmed build verification messages appear
+- ✅ Tested deployment scripts functionality
+- ⚠️  **Need to deploy to actual remote server**
+
+### Next Steps: Remote Server Deployment
+According to docs/DEPLOYMENT-RUNBOOK.md and docs/TEST-ENVIRONMENT-GUIDE.md:
+
+1. **Test Environment Deployment** (port 8001):
+   ```bash
+   ssh root@159.65.174.94
+   cd /home/ventanas/app-test
+   git pull origin main
+   bash scripts/deploy-test.sh
+   ```
+
+2. **Production Deployment** (port 8000):
+   ```bash
+   ssh root@159.65.174.94
+   cd /home/ventanas/app
+   git pull origin main
+   bash scripts/deploy-production.sh
+   ```
+
