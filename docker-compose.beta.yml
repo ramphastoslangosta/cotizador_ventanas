@@ -38,10 +38,10 @@ services:
           cpus: '0.5'
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 45s
-      timeout: 15s
-      retries: 3
-      start_period: 60s
+      interval: 30s          # Reduced from 45s for faster detection
+      timeout: 15s           # Keep same
+      retries: 5             # Increased from 3 for more resilience
+      start_period: 90s      # Increased from 60s for build verification
     networks:
       - ventanas-network
 
