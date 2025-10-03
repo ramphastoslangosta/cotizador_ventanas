@@ -55,8 +55,8 @@
 - [ ] Update task notes
 
 ## POST-MERGE (After PR Approval)
-- [ ] Merge to main
-- [ ] Deploy to test environment
+- [x] Merge to main
+- [x] Deploy to test environment
 - [ ] Monitor test environment 24 hours
 - [ ] Deploy to production
 - [ ] Monitor production 1 week
