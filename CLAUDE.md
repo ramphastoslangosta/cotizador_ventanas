@@ -39,6 +39,42 @@ python debug_env.py
 # Environment variable testing
 ```
 
+### Docker Deployment
+
+#### Production Deployment
+```bash
+bash scripts/deploy-production.sh
+# Automated deployment with verification and health checks
+# See docs/DEPLOYMENT-RUNBOOK.md for details
+```
+
+#### Test Environment Deployment
+```bash
+bash scripts/deploy-test.sh
+# Deploy to port 8001 for testing
+```
+
+#### Manual Docker Commands
+```bash
+# Build with cache clearing
+docker-compose -f docker-compose.beta.yml build --no-cache app
+
+# Start containers
+docker-compose -f docker-compose.beta.yml up -d
+
+# View logs
+docker-compose -f docker-compose.beta.yml logs -f app
+
+# Health check
+curl http://localhost:8000/api/health
+```
+
+**Build Improvements (DEVOPS-20251001-001):**
+- Automatic Python cache clearing (.pyc files, __pycache__)
+- Build verification confirms code changes present
+- Health check verification before considering deployment complete
+- Automated backup of logs before deployment
+
 ## Project Architecture
 
 ### Core Application Structure
