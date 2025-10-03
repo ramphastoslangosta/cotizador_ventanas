@@ -23,7 +23,7 @@
 - [ ] Test script syntax validation
 
 ### Docker Compose
-- [ ] Update health check settings in docker-compose.beta.yml
+- [x] Update health check settings in docker-compose.beta.yml
 - [ ] Create docker-compose.test.yml
 - [ ] Validate YAML syntax
 
