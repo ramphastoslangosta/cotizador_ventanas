@@ -170,3 +170,15 @@ grep "\[x\]" .claude/workspace/DEVOPS-20251001-001/checklist-DEVOPS-20251001-001
 - Commit: 72473b3
 - Changes: interval 30s, retries 5, start_period 90s for build verification
 - Issues: None (deprecation warning about version field is non-critical)
+
+### Step 3.1: Set Script Permissions
+- Started: 20:12
+- Completed: 20:12
+- Duration: <1 minute
+- Files Modified:
+  * scripts/deploy-production.sh (mode 100644 → 100755)
+  * scripts/deploy-test.sh (mode 100644 → 100755)
+- Test Result: ✅ Passed - Both scripts executable
+- Commit: 99513e2
+- Changes: Added execute permissions to deployment scripts
+- Issues: None
