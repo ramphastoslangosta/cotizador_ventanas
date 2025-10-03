@@ -13,7 +13,7 @@
 ### Dockerfile Improvements
 - [x] Add Python cache clearing after `COPY . .`
 - [x] Add build verification step
-- [ ] Verify chmod +x scripts/*.sh exists
+- [x] Verify chmod +x scripts/*.sh exists
 - [ ] Test Dockerfile builds locally
 
 ### Deployment Scripts
