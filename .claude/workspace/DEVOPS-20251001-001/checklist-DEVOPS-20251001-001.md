@@ -14,7 +14,7 @@
 - [x] Add Python cache clearing after `COPY . .`
 - [x] Add build verification step
 - [x] Verify chmod +x scripts/*.sh exists
-- [ ] Test Dockerfile builds locally
+- [x] Test Dockerfile builds locally
 
 ### Deployment Scripts
 - [x] Create scripts/deploy-production.sh
