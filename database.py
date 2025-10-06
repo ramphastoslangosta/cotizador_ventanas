@@ -1,7 +1,7 @@
 # database.py - Configuración de SQLAlchemy para Supabase
 from sqlalchemy import create_engine, Column, Integer, BigInteger, String, Text, Numeric, Boolean, DateTime, JSON, ForeignKey, Index, Enum
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, Session
+from sqlalchemy.orm import sessionmaker, Session, relationship
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.sql import func
 from typing import Optional
@@ -63,6 +63,14 @@ class AppMaterial(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     is_active = Column(Boolean, default=True)
+
+    # PERF-20251003-001: Add relationships for eager loading to eliminate N+1 queries
+    material_colors = relationship(
+        "MaterialColor",
+        primaryjoin="AppMaterial.id == foreign(MaterialColor.material_id)",
+        lazy="selectin",  # Eager load with separate SELECT
+        viewonly=True
+    )
 
 class AppProduct(Base):
     __tablename__ = "app_products"
