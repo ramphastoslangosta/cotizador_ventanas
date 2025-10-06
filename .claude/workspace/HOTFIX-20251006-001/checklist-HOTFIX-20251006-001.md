@@ -14,12 +14,12 @@
 - [ ] Search for additional logo_path usage in codebase
 - [ ] Test PDF generation locally (with logo)
 - [ ] Test PDF generation locally (without logo)
-- [ ] Create automated test cases
+- [x] Create automated test cases
 
 ## Phase 3: Integration
-- [ ] Run all local tests
+- [x] Run all local tests
 - [ ] Check for linting errors
-- [ ] Verify import statements
+- [x] Verify import statements
 - [ ] Check for circular dependencies
 
 ## Phase 4: Testing
@@ -52,8 +52,8 @@
 ## Code Changes Checklist
 - [x] app/routes/quotes.py:575 fixed
 - [x] templates/view_quote.html JavaScript scope fixed
-- [ ] tests/test_pdf_generation.py created
-- [ ] All changes committed atomically
+- [x] tests/test_pdf_generation.py created
+- [x] All changes committed atomically
 
 ## Verification Checklist
 - [ ] PDF generation works on production
