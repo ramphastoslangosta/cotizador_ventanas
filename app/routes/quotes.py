@@ -572,7 +572,7 @@ async def generate_quote_pdf(
             'phone': company.phone,
             'email': company.email,
             'website': company.website,
-            'logo_path': company.logo_path
+            'logo_path': f"static/logos/{company.logo_filename}" if company.logo_filename else None
         }
 
         # Generate PDF
