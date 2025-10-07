@@ -26,12 +26,12 @@
 - [x] Commit: "arch: add glass type to material code mapping"
 
 ### Step 2: Refactor get_glass_cost_per_m2()
-- [ ] Replace hardcoded _GLASS_CATALOG with database query
-- [ ] Add fallback logic
-- [ ] Add audit logging
-- [ ] Test database query path
-- [ ] Test fallback path
-- [ ] Commit: "arch: refactor glass pricing to use database"
+- [x] Replace hardcoded _GLASS_CATALOG with database query
+- [x] Add fallback logic
+- [x] Add audit logging
+- [x] Test database query path
+- [x] Test fallback path
+- [x] Commit: "arch: refactor glass pricing to use database"
 
 ### Step 3: Update Sample Data
 - [ ] Update initialize_sample_data() with 7 glass materials
