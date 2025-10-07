@@ -381,14 +381,58 @@ def initialize_sample_data(db: Session):
     
     print(f"    📊 {len(created_profiles)} perfiles con {len(aluminum_colors)} colores = {len(created_profiles) * len(aluminum_colors)} combinaciones")
     
-    # 2.2 VIDRIOS
+    # 2.2 VIDRIOS - Database-driven pricing (matches GLASS_TYPE_TO_MATERIAL_CODE)
     print("  🪟 Categoría: VIDRIOS")
     vidrios_data = [
-        {"name": "Vidrio Flotado 6mm", "code": "VID-FLOT-6", "cost": Decimal("145.00"), "unit": MaterialUnit.M2},
-        {"name": "Vidrio Templado 6mm", "code": "VID-TEMP-6", "cost": Decimal("280.00"), "unit": MaterialUnit.M2},
-        {"name": "Vidrio Laminado 6mm", "code": "VID-LAM-6", "cost": Decimal("320.00"), "unit": MaterialUnit.M2},
-        {"name": "Vidrio Reflectivo Bronze 6mm", "code": "VID-REF-BR6", "cost": Decimal("195.00"), "unit": MaterialUnit.M2},
-        {"name": "Vidrio Doble Acristalamiento", "code": "VID-DOBLE-6", "cost": Decimal("450.00"), "unit": MaterialUnit.M2},
+        {
+            "name": "Vidrio Claro 4mm",
+            "code": "VID-CLARO-4",
+            "cost": Decimal("85.00"),
+            "unit": MaterialUnit.M2,
+            "description": "Vidrio flotado transparente 4mm espesor"
+        },
+        {
+            "name": "Vidrio Claro 6mm",
+            "code": "VID-CLARO-6",
+            "cost": Decimal("120.00"),
+            "unit": MaterialUnit.M2,
+            "description": "Vidrio flotado transparente 6mm espesor"
+        },
+        {
+            "name": "Vidrio Bronce 4mm",
+            "code": "VID-BRONCE-4",
+            "cost": Decimal("95.00"),
+            "unit": MaterialUnit.M2,
+            "description": "Vidrio tintado bronce 4mm espesor"
+        },
+        {
+            "name": "Vidrio Bronce 6mm",
+            "code": "VID-BRONCE-6",
+            "cost": Decimal("135.00"),
+            "unit": MaterialUnit.M2,
+            "description": "Vidrio tintado bronce 6mm espesor"
+        },
+        {
+            "name": "Vidrio Reflectivo 6mm",
+            "code": "VID-REFLECTIVO-6",
+            "cost": Decimal("180.00"),
+            "unit": MaterialUnit.M2,
+            "description": "Vidrio reflectivo control solar 6mm"
+        },
+        {
+            "name": "Vidrio Laminado 6mm",
+            "code": "VID-LAMINADO-6",
+            "cost": Decimal("220.00"),
+            "unit": MaterialUnit.M2,
+            "description": "Vidrio laminado seguridad 6mm (3+3)"
+        },
+        {
+            "name": "Vidrio Templado 6mm",
+            "code": "VID-TEMP-6",
+            "cost": Decimal("195.00"),
+            "unit": MaterialUnit.M2,
+            "description": "Vidrio templado seguridad 6mm"
+        },
     ]
     
     created_glass = {}
@@ -399,11 +443,11 @@ def initialize_sample_data(db: Session):
             unit=vidrio_data["unit"],
             category="Vidrio",
             cost_per_unit=vidrio_data["cost"],
-            description=f"Vidrio para ventanas - {vidrio_data['name']}"
+            description=vidrio_data.get("description", f"Vidrio para ventanas - {vidrio_data['name']}")
         )
         created_material = service.create_material(material)
         created_glass[vidrio_data["name"]] = created_material
-        print(f"    ✓ {created_material.name} (ID: {created_material.id})")
+        print(f"    ✓ {created_material.name} ({vidrio_data['code']}) - ${vidrio_data['cost']}/m²")
     
     # 2.3 HERRAJES
     print("  🔧 Categoría: HERRAJES")
@@ -466,7 +510,7 @@ def initialize_sample_data(db: Session):
         BOMItem(material_id=created_profiles["Perfil Zócalo 3\""].id, material_type=MaterialType.PERFIL, quantity_formula="2 * (width_m / 2)", description="Zócalos de Hojas"),
         BOMItem(material_id=created_profiles["Perfil Traslape 3\""].id, material_type=MaterialType.PERFIL, quantity_formula="height_m", description="Traslape Vertical"),
         # Vidrio
-        BOMItem(material_id=created_glass["Vidrio Flotado 6mm"].id, material_type=MaterialType.VIDRIO, quantity_formula="area_m2 * 0.5", description="Vidrio por paño (50% del área total)"),
+        BOMItem(material_id=created_glass["Vidrio Claro 6mm"].id, material_type=MaterialType.VIDRIO, quantity_formula="area_m2 * 0.5", description="Vidrio por paño (50% del área total)"),
         # Herrajes
         BOMItem(material_id=created_hardware["Rodamiento Doble Línea 3\""].id, material_type=MaterialType.HERRAJE, quantity_formula="4", description="Rodamientos (4 por ventana)"),
         # Consumibles
