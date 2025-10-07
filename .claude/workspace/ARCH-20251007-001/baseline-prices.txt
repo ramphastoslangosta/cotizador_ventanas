@@ -1,0 +1,8 @@
+Current Hardcoded Glass Prices:
+  claro_4mm: $85.00/m²
+  claro_6mm: $120.00/m²
+  bronce_4mm: $95.00/m²
+  bronce_6mm: $135.00/m²
+  reflectivo_6mm: $180.00/m²
+  laminado_6mm: $220.00/m²
+  templado_6mm: $195.00/m²
