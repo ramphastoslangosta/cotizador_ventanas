@@ -224,9 +224,41 @@ When extracting routes from main.py to modular routers, **always follow the Rout
   pytest -m security       # Run security tests only
   ```
 
-## Recent Fixes (August 2025)
+## Recent Fixes
 
-### CSV Import/Export Functionality Fixed
+### HOTFIX-20251006-001: PDF Generation Critical Bug (October 2025)
+**Problem**: PDF generation completely broken with 100% failure rate
+**Resolution**: Fixed 3 critical bugs affecting PDF generation
+
+#### Issues Fixed:
+1. **Company logo_path AttributeError** (`app/routes/quotes.py:575`)
+   - **Fix**: Database model has `logo_filename`, not `logo_path`
+   - **Solution**: Construct path dynamically: `f"static/logos/{company.logo_filename}" if company.logo_filename else None`
+
+2. **JavaScript Scope Error** (`templates/view_quote.html:238-348`)
+   - **Fix**: Variable `originalText` declared in try block but accessed in finally block
+   - **Solution**: Moved variable declaration before try block in both `generatePDF()` and `convertToWorkOrder()` functions
+
+3. **Quote.quote_data Access Issue** (`app/routes/quotes.py:580`)
+   - **Fix**: PDF service expected Pydantic model but received SQLAlchemy model
+   - **Error**: `'Quote' object has no attribute 'items'`
+   - **Solution**: Pass `quote.quote_data` (JSONB dict) to PDF service instead of quote object
+
+#### Testing & Deployment:
+- ✅ Local testing passed
+- ✅ Test environment (port 8001) verified
+- ✅ Production (port 8000) deployed and verified
+- ✅ Created `tests/test_pdf_generation.py` with 3 test cases
+
+#### Key Learnings:
+- Database field naming consistency critical (`logo_filename` vs `logo_path`)
+- JavaScript async/await + try/finally scope requires careful variable placement
+- Quote model stores data in `quote_data` JSONB field - must extract before passing to services
+- Comprehensive testing reveals hidden bugs (3rd bug discovered during testing)
+
+---
+
+### CSV Import/Export Functionality Fixed (August 2025)
 **Problem**: CSV import was failing with DOM errors and database service issues
 **Resolution**: Complete fix implemented following development protocol
 

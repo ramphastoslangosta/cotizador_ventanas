@@ -572,12 +572,16 @@ async def generate_quote_pdf(
             'phone': company.phone,
             'email': company.email,
             'website': company.website,
-            'logo_path': company.logo_path
+            'logo_path': f"static/logos/{company.logo_filename}" if company.logo_filename else None
         }
+
+        # Convert Quote database model to QuoteCalculation for PDF service
+        # The Quote model stores data in quote_data JSONB field
+        quote_data_for_pdf = quote.quote_data
 
         # Generate PDF
         pdf_service = PDFQuoteService()
-        pdf_bytes = pdf_service.generate_quote_pdf(quote, company_info)
+        pdf_bytes = pdf_service.generate_quote_pdf(quote_data_for_pdf, company_info)
 
         # Return PDF response
         return Response(

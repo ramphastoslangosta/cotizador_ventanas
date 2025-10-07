@@ -236,16 +236,18 @@
 
 <script>
 async function generatePDF() {
+    // Get button and capture original state before try block
+    const button = document.querySelector('button[onclick="generatePDF()"]');
+    if (!button) return;
+
+    const originalText = button.innerHTML;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generando PDF...';
+    button.disabled = true;
+
     try {
         // Obtener el ID de la cotización desde la URL
         const urlParts = window.location.pathname.split('/');
         const quoteId = urlParts[urlParts.length - 1];
-        
-        // Mostrar mensaje de carga
-        const button = document.querySelector('button[onclick="generatePDF()"]');
-        const originalText = '<i class="fas fa-file-pdf"></i> Generar PDF';
-        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generando PDF...';
-        button.disabled = true;
         
         // Crear URL para descargar PDF
         const pdfUrl = `/quotes/${quoteId}/pdf`;
@@ -287,30 +289,30 @@ async function generatePDF() {
         showAlert('Error de conexión al generar PDF', 'danger');
     } finally {
         // Restaurar el botón
-        const button = document.querySelector('button[onclick="generatePDF()"]');
-        if (button) {
-            button.innerHTML = originalText;
-            button.disabled = false;
-        }
+        button.innerHTML = originalText;
+        button.disabled = false;
     }
 }
 
 async function convertToWorkOrder() {
+    // Obtener el ID de la cotización desde la URL
+    const urlParts = window.location.pathname.split('/');
+    const quoteId = urlParts[urlParts.length - 1];
+
+    // Mostrar mensaje de confirmación
+    if (!confirm('¿Estás seguro de que deseas convertir esta cotización en una orden de trabajo?')) {
+        return;
+    }
+
+    // Get button and capture original state before try block
+    const button = document.querySelector('button[onclick="convertToWorkOrder()"]');
+    if (!button) return;
+
+    const originalText = button.innerHTML;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Convirtiendo...';
+    button.disabled = true;
+
     try {
-        // Obtener el ID de la cotización desde la URL
-        const urlParts = window.location.pathname.split('/');
-        const quoteId = urlParts[urlParts.length - 1];
-        
-        // Mostrar mensaje de confirmación
-        if (!confirm('¿Estás seguro de que deseas convertir esta cotización en una orden de trabajo?')) {
-            return;
-        }
-        
-        // Mostrar mensaje de carga
-        const button = document.querySelector('button[onclick="convertToWorkOrder()"]');
-        const originalText = '<i class="bi bi-tools"></i> Convertir a Orden de Trabajo';
-        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Convirtiendo...';
-        button.disabled = true;
         
         // Hacer la petición para convertir la cotización
         const response = await fetch('/api/work-orders/from-quote', {
@@ -342,11 +344,8 @@ async function convertToWorkOrder() {
         showAlert('Error de conexión al crear la orden de trabajo', 'danger');
     } finally {
         // Restaurar el botón
-        const button = document.querySelector('button[onclick="convertToWorkOrder()"]');
-        if (button) {
-            button.innerHTML = originalText;
-            button.disabled = false;
-        }
+        button.innerHTML = originalText;
+        button.disabled = false;
     }
 }
 </script>
