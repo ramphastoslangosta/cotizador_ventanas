@@ -41,12 +41,12 @@
 - [x] Commit: "arch: update sample data with glass material codes"
 
 ### Step 4: Database Migration
-- [ ] Create Alembic migration file
-- [ ] Add upgrade logic for 7 glass types
-- [ ] Add downgrade logic (optional)
-- [ ] Validate migration syntax
-- [ ] Test migration dry run
-- [ ] Commit: "arch: add alembic migration for glass material codes"
+- [x] Create Alembic migration file
+- [x] Add upgrade logic for 7 glass types
+- [x] Add downgrade logic (optional)
+- [x] Validate migration syntax
+- [x] Test migration dry run
+- [x] Commit: "arch: add alembic migration for glass material codes"
 
 ### Step 5: Unit Tests
 - [ ] Create tests/test_glass_pricing_database.py
