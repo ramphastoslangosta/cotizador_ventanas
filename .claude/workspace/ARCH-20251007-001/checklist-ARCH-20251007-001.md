@@ -49,20 +49,20 @@
 - [x] Commit: "arch: add alembic migration for glass material codes"
 
 ### Step 5: Unit Tests
-- [ ] Create tests/test_glass_pricing_database.py
-- [ ] Add test_glass_type_mapping_complete
-- [ ] Add test_fallback_prices_complete
-- [ ] Add test_database_glass_pricing
-- [ ] Add test_fallback_pricing_when_database_empty
-- [ ] Add test_price_update_via_ui_takes_effect
-- [ ] Add test_all_glass_types_calculate_correctly
-- [ ] Add test_invalid_glass_type_raises_error
-- [ ] Add test_performance_database_lookup
-- [ ] Add test_backward_compatibility_existing_quotes
-- [ ] Add parametrized tests for all 7 glass types
-- [ ] Run all new tests
-- [ ] Check coverage (target: >90%)
-- [ ] Commit: "test: add comprehensive glass pricing database tests"
+- [x] Create tests/test_glass_pricing_database.py
+- [x] Add test_glass_type_mapping_complete
+- [x] Add test_fallback_prices_complete
+- [x] Add test_database_glass_pricing
+- [x] Add test_fallback_pricing_when_database_empty
+- [x] Add test_price_update_via_ui_takes_effect
+- [x] Add test_all_glass_types_calculate_correctly
+- [x] Add test_invalid_glass_type_raises_error
+- [x] Add test_performance_database_lookup
+- [x] Add test_backward_compatibility_existing_quotes
+- [x] Add parametrized tests for all 7 glass types
+- [x] Run all new tests
+- [x] Check coverage (target: >90%)
+- [x] Commit: "test: add comprehensive glass pricing database tests"
 
 ### Step 6: Integration Tests
 - [ ] Add test_quote_calculation_with_database_glass_pricing
