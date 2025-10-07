@@ -181,20 +181,73 @@ class ProductBOMServiceDB:
         return None
 
     def get_glass_cost_per_m2(self, glass_type: GlassType) -> Decimal:
-        """Obtiene el costo por m2 de un tipo de vidrio."""
-        _GLASS_CATALOG = [
-            Glass(id=1, name="Vidrio Claro 4mm", glass_type=GlassType.CLARO_4MM, cost_per_m2=Decimal('85.00'), thickness=4),
-            Glass(id=2, name="Vidrio Claro 6mm", glass_type=GlassType.CLARO_6MM, cost_per_m2=Decimal('120.00'), thickness=6),
-            Glass(id=3, name="Vidrio Bronce 4mm", glass_type=GlassType.BRONCE_4MM, cost_per_m2=Decimal('95.00'), thickness=4),
-            Glass(id=4, name="Vidrio Bronce 6mm", glass_type=GlassType.BRONCE_6MM, cost_per_m2=Decimal('135.00'), thickness=6),
-            Glass(id=5, name="Vidrio Reflectivo 6mm", glass_type=GlassType.REFLECTIVO_6MM, cost_per_m2=Decimal('180.00'), thickness=6),
-            Glass(id=6, name="Vidrio Laminado 6mm", glass_type=GlassType.LAMINADO_6MM, cost_per_m2=Decimal('220.00'), thickness=6),
-            Glass(id=7, name="Vidrio Templado 6mm", glass_type=GlassType.TEMPLADO_6MM, cost_per_m2=Decimal('195.00'), thickness=6),
-        ]
-        for glass in _GLASS_CATALOG:
-            if glass.glass_type == glass_type:
-                return glass.cost_per_m2
-        raise ValueError(f"Costo de vidrio no encontrado para tipo: {glass_type}")
+        """
+        Obtiene el costo por m2 de un tipo de vidrio desde la base de datos.
+
+        Intenta primero obtener el precio desde la tabla app_materials usando
+        el código de material. Si falla, usa precios hardcoded como fallback.
+
+        Args:
+            glass_type: Tipo de vidrio (enum GlassType)
+
+        Returns:
+            Decimal: Costo por metro cuadrado del vidrio
+
+        Raises:
+            ValueError: Si el tipo de vidrio no existe y no hay fallback
+        """
+        # Get material code for this glass type
+        material_code = GLASS_TYPE_TO_MATERIAL_CODE.get(glass_type)
+
+        if not material_code:
+            raise ValueError(f"Código de material no encontrado para tipo de vidrio: {glass_type}")
+
+        try:
+            # Query database for glass material
+            glass_material = (
+                self.db.query(DBAppMaterial)
+                .filter(
+                    DBAppMaterial.code == material_code,
+                    DBAppMaterial.is_active == True
+                )
+                .first()
+            )
+
+            if glass_material:
+                # Database price found - use it
+                price = glass_material.cost_per_unit
+
+                # Audit log: price source for transparency
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.debug(
+                    f"Glass price loaded from database: {glass_type.value} = ${price}/m² (code: {material_code})"
+                )
+
+                return Decimal(str(price))
+
+        except Exception as e:
+            # Database query failed - log warning and use fallback
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning(
+                f"Failed to load glass price from database for {glass_type.value}: {str(e)}. Using fallback price."
+            )
+
+        # Fallback to hardcoded prices (backward compatibility)
+        fallback_price = GLASS_FALLBACK_PRICES.get(glass_type)
+
+        if fallback_price is None:
+            raise ValueError(f"Precio de vidrio no encontrado para tipo: {glass_type}")
+
+        # Audit log: using fallback price
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(
+            f"Using fallback glass price: {glass_type.value} = ${fallback_price}/m² (database lookup failed)"
+        )
+
+        return fallback_price
     
     # === Métodos de conversión entre modelos DB y Pydantic ===
     def _db_material_to_pydantic(self, db_material: DBAppMaterial) -> AppMaterial:
