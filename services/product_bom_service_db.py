@@ -9,6 +9,29 @@ from models.quote_models import WindowType, AluminumLine, GlassType, LaborCost, 
 from database import AppMaterial as DBAppMaterial, AppProduct as DBAppProduct
 from database import DatabaseMaterialService, DatabaseProductService, DatabaseColorService, Color, MaterialColor
 
+# Glass type to material code mapping
+# Material codes follow pattern: VID-{TYPE}-{THICKNESS}
+GLASS_TYPE_TO_MATERIAL_CODE = {
+    GlassType.CLARO_4MM: "VID-CLARO-4",
+    GlassType.CLARO_6MM: "VID-CLARO-6",
+    GlassType.BRONCE_4MM: "VID-BRONCE-4",
+    GlassType.BRONCE_6MM: "VID-BRONCE-6",
+    GlassType.REFLECTIVO_6MM: "VID-REFLECTIVO-6",
+    GlassType.LAMINADO_6MM: "VID-LAMINADO-6",
+    GlassType.TEMPLADO_6MM: "VID-TEMP-6",
+}
+
+# Hardcoded fallback prices (backward compatibility)
+GLASS_FALLBACK_PRICES = {
+    GlassType.CLARO_4MM: Decimal('85.00'),
+    GlassType.CLARO_6MM: Decimal('120.00'),
+    GlassType.BRONCE_4MM: Decimal('95.00'),
+    GlassType.BRONCE_6MM: Decimal('135.00'),
+    GlassType.REFLECTIVO_6MM: Decimal('180.00'),
+    GlassType.LAMINADO_6MM: Decimal('220.00'),
+    GlassType.TEMPLADO_6MM: Decimal('195.00'),
+}
+
 class ProductBOMServiceDB:
     """Versión de ProductBOMService que usa base de datos en lugar de memoria"""
     
