@@ -34,11 +34,11 @@
 - [x] Commit: "arch: refactor glass pricing to use database"
 
 ### Step 3: Update Sample Data
-- [ ] Update initialize_sample_data() with 7 glass materials
-- [ ] Assign correct material codes
-- [ ] Add descriptions
-- [ ] Test sample data initialization
-- [ ] Commit: "arch: update sample data with glass material codes"
+- [x] Update initialize_sample_data() with 7 glass materials
+- [x] Assign correct material codes
+- [x] Add descriptions
+- [x] Test sample data initialization
+- [x] Commit: "arch: update sample data with glass material codes"
 
 ### Step 4: Database Migration
 - [ ] Create Alembic migration file

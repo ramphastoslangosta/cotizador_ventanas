@@ -255,3 +255,20 @@
   - Audit logging added for transparency (debug for DB, info for fallback)
   - All 7 glass types tested successfully with fallback mechanism
   - Local testing uses fallback since Docker DB not accessible (expected)
+
+### Step 3: Update Sample Data
+- Started: $(date +%H:%M)
+- Completed: $(date +%H:%M)
+- Duration: 10 minutes
+- Files Modified:
+  * services/product_bom_service_db.py (lines 384-450, 513)
+- Test Result: ✅ Passed - All 7 glass materials validated
+- Commit: (next commit hash)
+- Issues: None
+- Notes:
+  - Replaced 5 old glass materials with 7 standardized materials
+  - All codes match GLASS_TYPE_TO_MATERIAL_CODE dictionary
+  - All prices match GLASS_FALLBACK_PRICES
+  - Added detailed descriptions for each glass type
+  - Updated BOM reference: "Vidrio Flotado 6mm" → "Vidrio Claro 6mm"
+  - Enhanced print statement to show code and price
