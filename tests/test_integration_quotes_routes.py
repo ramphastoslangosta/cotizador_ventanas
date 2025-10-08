@@ -688,3 +688,113 @@ class TestDatabaseQuoteServicePagination:
 
         # Verify default limit was used
         assert len(result) <= 20  # Should not exceed default limit
+
+
+class TestGlassPricingIntegration:
+    """Integration tests for database-driven glass pricing in quotes"""
+
+    def test_quote_calculation_with_database_glass_pricing(self):
+        """Test that quote calculations use database glass prices"""
+        from database import SessionLocal, DatabaseMaterialService
+        from services.product_bom_service_db import ProductBOMServiceDB, initialize_sample_data, GLASS_TYPE_TO_MATERIAL_CODE
+        from models.quote_models import GlassType
+
+        # Skip if database not available (local development)
+        try:
+            db = SessionLocal()
+        except Exception:
+            pytest.skip("Database not available for integration test")
+
+        try:
+            # Initialize sample data with glass materials
+            initialize_sample_data(db)
+
+            # Create BOM service
+            bom_service = ProductBOMServiceDB(db)
+            material_service = DatabaseMaterialService(db)
+
+            # Verify glass materials exist in database
+            glass_code = GLASS_TYPE_TO_MATERIAL_CODE[GlassType.CLARO_6MM]
+            glass_material = material_service.get_material_by_code(glass_code)
+            assert glass_material is not None, f"Glass material {glass_code} not found in database"
+
+            # Get glass price from database
+            glass_price = bom_service.get_glass_cost_per_m2(GlassType.CLARO_6MM)
+
+            # Verify price is from database (should match material cost_per_unit)
+            assert glass_price == glass_material.cost_per_unit, \
+                f"Glass price {glass_price} doesn't match database material {glass_material.cost_per_unit}"
+
+            # Verify price is positive and reasonable
+            assert glass_price > 0, "Glass price should be positive"
+            assert glass_price < Decimal("1000.00"), "Glass price should be reasonable"
+
+            print(f"✓ Quote calculated successfully with database glass pricing")
+            print(f"  Glass material: {glass_material.name} ({glass_code})")
+            print(f"  Glass price: ${glass_price}/m²")
+
+        finally:
+            db.close()
+
+    def test_glass_price_change_affects_new_quotes(self):
+        """Test that changing glass price in database affects new quotes"""
+        from database import SessionLocal, DatabaseMaterialService
+        from services.product_bom_service_db import ProductBOMServiceDB, initialize_sample_data, GLASS_TYPE_TO_MATERIAL_CODE
+        from models.quote_models import GlassType
+
+        # Skip if database not available
+        try:
+            db = SessionLocal()
+        except Exception:
+            pytest.skip("Database not available for integration test")
+
+        try:
+            # Initialize sample data
+            initialize_sample_data(db)
+
+            # Create services
+            bom_service = ProductBOMServiceDB(db)
+            material_service = DatabaseMaterialService(db)
+
+            # Get glass material
+            glass_code = GLASS_TYPE_TO_MATERIAL_CODE[GlassType.TEMPLADO_6MM]
+            glass_material = material_service.get_material_by_code(glass_code)
+            assert glass_material is not None, f"Glass material {glass_code} not found"
+
+            # Get initial price
+            initial_price = bom_service.get_glass_cost_per_m2(GlassType.TEMPLADO_6MM)
+            print(f"Initial price: ${initial_price}/m²")
+
+            # Update price in database (50% increase)
+            new_price = initial_price * Decimal("1.5")
+            material_service.update_material(
+                glass_material.id,
+                cost_per_unit=new_price
+            )
+
+            # Clear cache if present
+            if hasattr(bom_service, '_glass_price_cache') and bom_service._glass_price_cache is not None:
+                bom_service.clear_glass_price_cache()
+
+            # Get updated price
+            updated_price = bom_service.get_glass_cost_per_m2(GlassType.TEMPLADO_6MM)
+
+            # Verify new price is used
+            assert updated_price == new_price, \
+                f"Glass price change didn't propagate: {updated_price} != {new_price}"
+
+            # Verify price increased by 50%
+            price_increase_pct = ((updated_price - initial_price) / initial_price) * 100
+            assert abs(price_increase_pct - 50) < 0.1, \
+                f"Price increase should be 50%, got {price_increase_pct:.1f}%"
+
+            print(f"✓ Price change verified: ${initial_price} → ${updated_price} (+50%)")
+
+            # Restore original price for other tests
+            material_service.update_material(
+                glass_material.id,
+                cost_per_unit=initial_price
+            )
+
+        finally:
+            db.close()

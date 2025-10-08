@@ -9,13 +9,38 @@ from models.quote_models import WindowType, AluminumLine, GlassType, LaborCost, 
 from database import AppMaterial as DBAppMaterial, AppProduct as DBAppProduct
 from database import DatabaseMaterialService, DatabaseProductService, DatabaseColorService, Color, MaterialColor
 
+# Glass type to material code mapping
+# Material codes follow pattern: VID-{TYPE}-{THICKNESS}
+GLASS_TYPE_TO_MATERIAL_CODE = {
+    GlassType.CLARO_4MM: "VID-CLARO-4",
+    GlassType.CLARO_6MM: "VID-CLARO-6",
+    GlassType.BRONCE_4MM: "VID-BRONCE-4",
+    GlassType.BRONCE_6MM: "VID-BRONCE-6",
+    GlassType.REFLECTIVO_6MM: "VID-REFLECTIVO-6",
+    GlassType.LAMINADO_6MM: "VID-LAMINADO-6",
+    GlassType.TEMPLADO_6MM: "VID-TEMP-6",
+}
+
+# Hardcoded fallback prices (backward compatibility)
+GLASS_FALLBACK_PRICES = {
+    GlassType.CLARO_4MM: Decimal('85.00'),
+    GlassType.CLARO_6MM: Decimal('120.00'),
+    GlassType.BRONCE_4MM: Decimal('95.00'),
+    GlassType.BRONCE_6MM: Decimal('135.00'),
+    GlassType.REFLECTIVO_6MM: Decimal('180.00'),
+    GlassType.LAMINADO_6MM: Decimal('220.00'),
+    GlassType.TEMPLADO_6MM: Decimal('195.00'),
+}
+
 class ProductBOMServiceDB:
     """Versión de ProductBOMService que usa base de datos en lugar de memoria"""
-    
-    def __init__(self, db: Session):
+
+    def __init__(self, db: Session, enable_glass_cache: bool = True):
         self.db = db
         self.material_service = DatabaseMaterialService(db)
         self.product_service = DatabaseProductService(db)
+        # Optional glass price caching for performance
+        self._glass_price_cache = {} if enable_glass_cache else None
     
     # === Métodos para Materiales ===
     def get_all_materials(self) -> List[AppMaterial]:
@@ -158,21 +183,96 @@ class ProductBOMServiceDB:
         return None
 
     def get_glass_cost_per_m2(self, glass_type: GlassType) -> Decimal:
-        """Obtiene el costo por m2 de un tipo de vidrio."""
-        _GLASS_CATALOG = [
-            Glass(id=1, name="Vidrio Claro 4mm", glass_type=GlassType.CLARO_4MM, cost_per_m2=Decimal('85.00'), thickness=4),
-            Glass(id=2, name="Vidrio Claro 6mm", glass_type=GlassType.CLARO_6MM, cost_per_m2=Decimal('120.00'), thickness=6),
-            Glass(id=3, name="Vidrio Bronce 4mm", glass_type=GlassType.BRONCE_4MM, cost_per_m2=Decimal('95.00'), thickness=4),
-            Glass(id=4, name="Vidrio Bronce 6mm", glass_type=GlassType.BRONCE_6MM, cost_per_m2=Decimal('135.00'), thickness=6),
-            Glass(id=5, name="Vidrio Reflectivo 6mm", glass_type=GlassType.REFLECTIVO_6MM, cost_per_m2=Decimal('180.00'), thickness=6),
-            Glass(id=6, name="Vidrio Laminado 6mm", glass_type=GlassType.LAMINADO_6MM, cost_per_m2=Decimal('220.00'), thickness=6),
-            Glass(id=7, name="Vidrio Templado 6mm", glass_type=GlassType.TEMPLADO_6MM, cost_per_m2=Decimal('195.00'), thickness=6),
-        ]
-        for glass in _GLASS_CATALOG:
-            if glass.glass_type == glass_type:
-                return glass.cost_per_m2
-        raise ValueError(f"Costo de vidrio no encontrado para tipo: {glass_type}")
-    
+        """
+        Obtiene el costo por m2 de un tipo de vidrio desde la base de datos.
+
+        Uses optional in-memory cache to reduce database queries during
+        quote calculations with multiple glass items.
+
+        Intenta primero obtener el precio desde la tabla app_materials usando
+        el código de material. Si falla, usa precios hardcoded como fallback.
+
+        Args:
+            glass_type: Tipo de vidrio (enum GlassType)
+
+        Returns:
+            Decimal: Costo por metro cuadrado del vidrio
+
+        Raises:
+            ValueError: Si el tipo de vidrio no existe y no hay fallback
+        """
+        # Check cache first (if enabled)
+        if self._glass_price_cache is not None and glass_type in self._glass_price_cache:
+            return self._glass_price_cache[glass_type]
+
+        # Get material code for this glass type
+        material_code = GLASS_TYPE_TO_MATERIAL_CODE.get(glass_type)
+
+        if not material_code:
+            raise ValueError(f"Código de material no encontrado para tipo de vidrio: {glass_type}")
+
+        price = None
+
+        try:
+            # Query database for glass material
+            glass_material = (
+                self.db.query(DBAppMaterial)
+                .filter(
+                    DBAppMaterial.code == material_code,
+                    DBAppMaterial.is_active == True
+                )
+                .first()
+            )
+
+            if glass_material:
+                # Database price found - use it
+                price = Decimal(str(glass_material.cost_per_unit))
+
+                # Cache the price (if caching enabled)
+                if self._glass_price_cache is not None:
+                    self._glass_price_cache[glass_type] = price
+
+                # Audit log: price source for transparency
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.debug(
+                    f"Glass price loaded from database: {glass_type.value} = ${price}/m² (code: {material_code})"
+                )
+
+                return price
+
+        except Exception as e:
+            # Database query failed - log warning and use fallback
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning(
+                f"Failed to load glass price from database for {glass_type.value}: {str(e)}. Using fallback price."
+            )
+
+        # Fallback to hardcoded prices (backward compatibility)
+        fallback_price = GLASS_FALLBACK_PRICES.get(glass_type)
+
+        if fallback_price is None:
+            raise ValueError(f"Precio de vidrio no encontrado para tipo: {glass_type}")
+
+        # Cache fallback price (if caching enabled)
+        if self._glass_price_cache is not None:
+            self._glass_price_cache[glass_type] = fallback_price
+
+        # Audit log: using fallback price
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(
+            f"Using fallback glass price: {glass_type.value} = ${fallback_price}/m² (database lookup failed)"
+        )
+
+        return fallback_price
+
+    def clear_glass_price_cache(self):
+        """Clear glass price cache - call after updating glass material prices"""
+        if self._glass_price_cache is not None:
+            self._glass_price_cache.clear()
+
     # === Métodos de conversión entre modelos DB y Pydantic ===
     def _db_material_to_pydantic(self, db_material: DBAppMaterial) -> AppMaterial:
         """Convierte un modelo de base de datos a Pydantic"""
@@ -305,14 +405,58 @@ def initialize_sample_data(db: Session):
     
     print(f"    📊 {len(created_profiles)} perfiles con {len(aluminum_colors)} colores = {len(created_profiles) * len(aluminum_colors)} combinaciones")
     
-    # 2.2 VIDRIOS
+    # 2.2 VIDRIOS - Database-driven pricing (matches GLASS_TYPE_TO_MATERIAL_CODE)
     print("  🪟 Categoría: VIDRIOS")
     vidrios_data = [
-        {"name": "Vidrio Flotado 6mm", "code": "VID-FLOT-6", "cost": Decimal("145.00"), "unit": MaterialUnit.M2},
-        {"name": "Vidrio Templado 6mm", "code": "VID-TEMP-6", "cost": Decimal("280.00"), "unit": MaterialUnit.M2},
-        {"name": "Vidrio Laminado 6mm", "code": "VID-LAM-6", "cost": Decimal("320.00"), "unit": MaterialUnit.M2},
-        {"name": "Vidrio Reflectivo Bronze 6mm", "code": "VID-REF-BR6", "cost": Decimal("195.00"), "unit": MaterialUnit.M2},
-        {"name": "Vidrio Doble Acristalamiento", "code": "VID-DOBLE-6", "cost": Decimal("450.00"), "unit": MaterialUnit.M2},
+        {
+            "name": "Vidrio Claro 4mm",
+            "code": "VID-CLARO-4",
+            "cost": Decimal("85.00"),
+            "unit": MaterialUnit.M2,
+            "description": "Vidrio flotado transparente 4mm espesor"
+        },
+        {
+            "name": "Vidrio Claro 6mm",
+            "code": "VID-CLARO-6",
+            "cost": Decimal("120.00"),
+            "unit": MaterialUnit.M2,
+            "description": "Vidrio flotado transparente 6mm espesor"
+        },
+        {
+            "name": "Vidrio Bronce 4mm",
+            "code": "VID-BRONCE-4",
+            "cost": Decimal("95.00"),
+            "unit": MaterialUnit.M2,
+            "description": "Vidrio tintado bronce 4mm espesor"
+        },
+        {
+            "name": "Vidrio Bronce 6mm",
+            "code": "VID-BRONCE-6",
+            "cost": Decimal("135.00"),
+            "unit": MaterialUnit.M2,
+            "description": "Vidrio tintado bronce 6mm espesor"
+        },
+        {
+            "name": "Vidrio Reflectivo 6mm",
+            "code": "VID-REFLECTIVO-6",
+            "cost": Decimal("180.00"),
+            "unit": MaterialUnit.M2,
+            "description": "Vidrio reflectivo control solar 6mm"
+        },
+        {
+            "name": "Vidrio Laminado 6mm",
+            "code": "VID-LAMINADO-6",
+            "cost": Decimal("220.00"),
+            "unit": MaterialUnit.M2,
+            "description": "Vidrio laminado seguridad 6mm (3+3)"
+        },
+        {
+            "name": "Vidrio Templado 6mm",
+            "code": "VID-TEMP-6",
+            "cost": Decimal("195.00"),
+            "unit": MaterialUnit.M2,
+            "description": "Vidrio templado seguridad 6mm"
+        },
     ]
     
     created_glass = {}
@@ -323,11 +467,11 @@ def initialize_sample_data(db: Session):
             unit=vidrio_data["unit"],
             category="Vidrio",
             cost_per_unit=vidrio_data["cost"],
-            description=f"Vidrio para ventanas - {vidrio_data['name']}"
+            description=vidrio_data.get("description", f"Vidrio para ventanas - {vidrio_data['name']}")
         )
         created_material = service.create_material(material)
         created_glass[vidrio_data["name"]] = created_material
-        print(f"    ✓ {created_material.name} (ID: {created_material.id})")
+        print(f"    ✓ {created_material.name} ({vidrio_data['code']}) - ${vidrio_data['cost']}/m²")
     
     # 2.3 HERRAJES
     print("  🔧 Categoría: HERRAJES")
@@ -390,7 +534,7 @@ def initialize_sample_data(db: Session):
         BOMItem(material_id=created_profiles["Perfil Zócalo 3\""].id, material_type=MaterialType.PERFIL, quantity_formula="2 * (width_m / 2)", description="Zócalos de Hojas"),
         BOMItem(material_id=created_profiles["Perfil Traslape 3\""].id, material_type=MaterialType.PERFIL, quantity_formula="height_m", description="Traslape Vertical"),
         # Vidrio
-        BOMItem(material_id=created_glass["Vidrio Flotado 6mm"].id, material_type=MaterialType.VIDRIO, quantity_formula="area_m2 * 0.5", description="Vidrio por paño (50% del área total)"),
+        BOMItem(material_id=created_glass["Vidrio Claro 6mm"].id, material_type=MaterialType.VIDRIO, quantity_formula="area_m2 * 0.5", description="Vidrio por paño (50% del área total)"),
         # Herrajes
         BOMItem(material_id=created_hardware["Rodamiento Doble Línea 3\""].id, material_type=MaterialType.HERRAJE, quantity_formula="4", description="Rodamientos (4 por ventana)"),
         # Consumibles
