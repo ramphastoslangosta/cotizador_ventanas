@@ -72,12 +72,12 @@
 - [x] Commit: "test: add integration tests for glass pricing in quotes"
 
 ### Step 7: Performance Optimization
-- [ ] Add _glass_price_cache to __init__
-- [ ] Update get_glass_cost_per_m2() with caching
-- [ ] Add clear_glass_price_cache() method
-- [ ] Test caching performance
-- [ ] Test cache clearing
-- [ ] Commit: "perf: add optional caching for glass pricing"
+- [x] Add _glass_price_cache to __init__
+- [x] Update get_glass_cost_per_m2() with caching
+- [x] Add clear_glass_price_cache() method
+- [x] Test caching performance
+- [x] Test cache clearing
+- [x] Commit: "perf: add optional caching for glass pricing"
 
 ## PHASE 3: INTEGRATION
 
