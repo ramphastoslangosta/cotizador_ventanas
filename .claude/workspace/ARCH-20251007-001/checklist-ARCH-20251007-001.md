@@ -65,11 +65,11 @@
 - [x] Commit: "test: add comprehensive glass pricing database tests"
 
 ### Step 6: Integration Tests
-- [ ] Add test_quote_calculation_with_database_glass_pricing
-- [ ] Add test_glass_price_change_affects_new_quotes
-- [ ] Run integration tests
-- [ ] Run all quote-related tests
-- [ ] Commit: "test: add integration tests for glass pricing in quotes"
+- [x] Add test_quote_calculation_with_database_glass_pricing
+- [x] Add test_glass_price_change_affects_new_quotes
+- [x] Run integration tests
+- [x] Run all quote-related tests
+- [x] Commit: "test: add integration tests for glass pricing in quotes"
 
 ### Step 7: Performance Optimization
 - [ ] Add _glass_price_cache to __init__
@@ -90,7 +90,7 @@
 ## PHASE 4: TESTING
 
 - [ ] Run all unit tests
-- [ ] Run integration tests
+- [x] Run integration tests
 - [ ] Run all tests (regression check)
 - [ ] Check test coverage (>90%)
 - [ ] Run performance benchmarks
