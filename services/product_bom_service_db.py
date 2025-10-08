@@ -34,11 +34,13 @@ GLASS_FALLBACK_PRICES = {
 
 class ProductBOMServiceDB:
     """Versión de ProductBOMService que usa base de datos en lugar de memoria"""
-    
-    def __init__(self, db: Session):
+
+    def __init__(self, db: Session, enable_glass_cache: bool = True):
         self.db = db
         self.material_service = DatabaseMaterialService(db)
         self.product_service = DatabaseProductService(db)
+        # Optional glass price caching for performance
+        self._glass_price_cache = {} if enable_glass_cache else None
     
     # === Métodos para Materiales ===
     def get_all_materials(self) -> List[AppMaterial]:
@@ -184,6 +186,9 @@ class ProductBOMServiceDB:
         """
         Obtiene el costo por m2 de un tipo de vidrio desde la base de datos.
 
+        Uses optional in-memory cache to reduce database queries during
+        quote calculations with multiple glass items.
+
         Intenta primero obtener el precio desde la tabla app_materials usando
         el código de material. Si falla, usa precios hardcoded como fallback.
 
@@ -196,11 +201,17 @@ class ProductBOMServiceDB:
         Raises:
             ValueError: Si el tipo de vidrio no existe y no hay fallback
         """
+        # Check cache first (if enabled)
+        if self._glass_price_cache is not None and glass_type in self._glass_price_cache:
+            return self._glass_price_cache[glass_type]
+
         # Get material code for this glass type
         material_code = GLASS_TYPE_TO_MATERIAL_CODE.get(glass_type)
 
         if not material_code:
             raise ValueError(f"Código de material no encontrado para tipo de vidrio: {glass_type}")
+
+        price = None
 
         try:
             # Query database for glass material
@@ -215,7 +226,11 @@ class ProductBOMServiceDB:
 
             if glass_material:
                 # Database price found - use it
-                price = glass_material.cost_per_unit
+                price = Decimal(str(glass_material.cost_per_unit))
+
+                # Cache the price (if caching enabled)
+                if self._glass_price_cache is not None:
+                    self._glass_price_cache[glass_type] = price
 
                 # Audit log: price source for transparency
                 import logging
@@ -224,7 +239,7 @@ class ProductBOMServiceDB:
                     f"Glass price loaded from database: {glass_type.value} = ${price}/m² (code: {material_code})"
                 )
 
-                return Decimal(str(price))
+                return price
 
         except Exception as e:
             # Database query failed - log warning and use fallback
@@ -240,6 +255,10 @@ class ProductBOMServiceDB:
         if fallback_price is None:
             raise ValueError(f"Precio de vidrio no encontrado para tipo: {glass_type}")
 
+        # Cache fallback price (if caching enabled)
+        if self._glass_price_cache is not None:
+            self._glass_price_cache[glass_type] = fallback_price
+
         # Audit log: using fallback price
         import logging
         logger = logging.getLogger(__name__)
@@ -248,7 +267,12 @@ class ProductBOMServiceDB:
         )
 
         return fallback_price
-    
+
+    def clear_glass_price_cache(self):
+        """Clear glass price cache - call after updating glass material prices"""
+        if self._glass_price_cache is not None:
+            self._glass_price_cache.clear()
+
     # === Métodos de conversión entre modelos DB y Pydantic ===
     def _db_material_to_pydantic(self, db_material: DBAppMaterial) -> AppMaterial:
         """Convierte un modelo de base de datos a Pydantic"""
