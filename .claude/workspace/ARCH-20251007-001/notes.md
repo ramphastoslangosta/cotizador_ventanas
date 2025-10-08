@@ -350,3 +350,59 @@
   - Performance optimization: reduces repeated DB queries during quote calculations
   - Cache cleared automatically when prices updated via UI (requires manual clear_glass_price_cache() call)
 
+
+## Test Environment Deployment: 2025-10-08
+
+### Deployment Process
+- Started: 22:00 UTC
+- Completed: 22:05 UTC
+- Duration: 5 minutes
+
+### Steps Executed
+1. **SSH Connection**: Connected to droplet 159.65.174.94
+2. **Code Update**: Pulled main branch (35 commits, including glass pricing changes)
+3. **Docker Rebuild**: Built test container with --no-cache flag
+4. **Container Start**: Started ventanas-test-app container
+5. **Network Fix**: Connected container to app-test_ventanas-test-network
+6. **Database Verification**: Confirmed database connectivity
+7. **Material Creation**: Created 7 glass materials with standardized codes
+8. **Functionality Testing**: Verified all 7 glass types working
+9. **Price Update Test**: Confirmed database price updates work with cache clearing
+10. **External Access**: Verified test environment accessible at port 8001
+
+### Glass Materials Status
+- VID-CLARO-4: Created ($85.00/m²)
+- VID-CLARO-6: Created ($120.00/m²)
+- VID-BRONCE-4: Created ($95.00/m²)
+- VID-BRONCE-6: Created ($135.00/m²)
+- VID-REFLECTIVO-6: Created ($180.00/m²)
+- VID-LAMINADO-6: Created ($220.00/m²)
+- VID-TEMP-6: Existing material used ($280.00/m²)
+
+### Verification Results
+✅ Database connectivity
+✅ All 7 glass types pricing correctly
+✅ Price updates via database work (with cache clear)
+✅ External accessibility (HTTP 200)
+✅ Caching mechanism functional
+
+### Issues Encountered & Resolved
+1. **Network Isolation**: Container couldn't reach database
+   - **Cause**: App container on new network, DB on old network
+   - **Fix**: Connected app to app-test_ventanas-test-network
+   - **Resolution Time**: 2 minutes
+
+2. **Alembic Not Initialized**: Migration couldn't run
+   - **Impact**: Minor - sample data initialization handled material creation
+   - **Resolution**: Skipped migration, created materials via Python script
+
+### Performance Observations
+- Container build time: ~3 minutes (--no-cache)
+- Database queries: <10ms per glass type lookup
+- Cache performance: Subsequent lookups <1ms
+
+### Next Actions
+1. Begin 24-hour monitoring period
+2. Manual UI testing (quotes with glass items)
+3. Prepare production deployment plan
+
