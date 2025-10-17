@@ -216,12 +216,17 @@
 
             <div class="col-md-3 mb-3">
                 <label class="form-label">Tipo de Vidrio *</label>
-                <select class="form-select selected-glass-type" required>
-                    <option value="">Seleccionar...</option>
-                    {% for glass in glass_types %}
-                    <option value="{{ glass.value }}">{{ glass.label }}</option>
+                <select class="form-select selected-glass-type" data-field="glass_material_id" required>
+                    <option value="">Seleccionar vidrio...</option>
+                    {% for glass in glass_materials %}
+                    <option value="{{ glass.id }}" data-cost="{{ glass.cost_per_unit }}">
+                        {{ glass.name }} - ${{ "%.2f"|format(glass.cost_per_unit) }}/m²
+                    </option>
                     {% endfor %}
                 </select>
+                <small class="form-text text-muted">
+                    <i class="bi bi-database"></i> Cargado dinámicamente desde Materials Catalog
+                </small>
             </div>
             <div class="col-md-3 mb-3">
                 <label class="form-label">Color de Perfiles *</label>
@@ -618,10 +623,10 @@
         const width = parseFloat(windowItemElement.querySelector('.width').value);
         const height = parseFloat(windowItemElement.querySelector('.height').value);
         const quantity = parseInt(windowItemElement.querySelector('.quantity').value);
-        const selectedGlassType = windowItemElement.querySelector('.selected-glass-type').value;
+        const selectedGlassMaterialId = windowItemElement.querySelector('.selected-glass-type').value;  // NEW PATH: material ID
         const selectedProfileColor = windowItemElement.querySelector('.selected-profile-color').value;
 
-        if (!productId || isNaN(width) || isNaN(height) || isNaN(quantity) || quantity <= 0 || !selectedGlassType || !selectedProfileColor) {
+        if (!productId || isNaN(width) || isNaN(height) || isNaN(quantity) || quantity <= 0 || !selectedGlassMaterialId || !selectedProfileColor) {
             displayDiv.style.display = 'none';
             return;
         }
@@ -641,7 +646,8 @@
 
             const itemData = {
                 product_bom_id: parseInt(productId),
-                selected_glass_type: selectedGlassType,
+                selected_glass_material_id: selectedGlassMaterialId ? parseInt(selectedGlassMaterialId) : null,  // NEW PATH
+                selected_glass_type: null,  // OLD PATH - deprecated
                 selected_profile_color: selectedProfileColor,
                 width_cm: width,
                 height_cm: height,
@@ -918,9 +924,14 @@
                 return;
             }
 
+            // NEW PATH: Send glass material ID (database-driven)
+            const glassSelect = item.querySelector('.selected-glass-type');
+            const glassValue = glassSelect.value;
+
             const itemData = {
                 product_bom_id: productId,
-                selected_glass_type: item.querySelector('.selected-glass-type').value,
+                selected_glass_material_id: glassValue ? parseInt(glassValue) : null,  // NEW PATH
+                selected_glass_type: null,  // OLD PATH - deprecated, set to null
                 selected_profile_color: item.querySelector('.selected-profile-color').value,
 
                 width_cm: parseFloat(item.querySelector('.width').value) || 0,
