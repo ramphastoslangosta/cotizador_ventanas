@@ -224,6 +224,78 @@ When extracting routes from main.py to modular routers, **always follow the Rout
   pytest -m security       # Run security tests only
   ```
 
+## Deprecated Features & Migration Guides
+
+### ARCH-20251017-001: GlassType Enum Deprecated (October 2025)
+
+**Status**: ⚠️  **DEPRECATED** - Hardcoded GlassType enum replaced with database-driven glass selection
+
+#### What Changed
+The hardcoded `GlassType` enum for glass selection has been deprecated in favor of database-driven glass materials from the `app_materials` table. This enables dynamic glass catalog management without code deployment.
+
+#### Migration Path
+
+**OLD PATH (Deprecated):**
+```python
+# models/quote_models.py
+class WindowItem(BaseModel):
+    selected_glass_type: GlassType  # DEPRECATED
+
+# services/product_bom_service_db.py
+glass_cost = service.get_glass_cost_per_m2(GlassType.CLARO_6MM)  # DEPRECATED
+```
+
+**NEW PATH (Preferred):**
+```python
+# models/quote_models.py
+class WindowItem(BaseModel):
+    selected_glass_material_id: int  # NEW - database-driven
+
+# services/product_bom_service_db.py
+glass_cost = service.get_glass_cost_by_material_id(material_id)  # NEW
+```
+
+#### Dual-Path Architecture
+Both paths work simultaneously for backward compatibility:
+- **New quotes**: Use `selected_glass_material_id` (database ID)
+- **Existing quotes**: Continue to work with `selected_glass_type` (enum)
+- **Zero breaking changes**: All existing functionality preserved
+
+#### Benefits of Database-Driven Approach
+1. **Dynamic catalog management**: Add/remove glass types via Materials Catalog UI
+2. **No code deployment**: Glass materials updated in database, appear in dropdown immediately
+3. **Multi-tenant ready**: Glass catalogs can be filtered by tenant_id
+4. **Consistent architecture**: Matches profile colors pattern (already database-driven)
+5. **Eliminates data sync issues**: No risk of database/enum mismatch
+
+#### Affected Files
+- `models/quote_models.py`: GlassType enum, WindowItem model, WindowCalculation model
+- `services/product_bom_service_db.py`: get_glass_cost_per_m2() method (deprecated), GLASS_TYPE_TO_MATERIAL_CODE mapping
+- `app/routes/quotes.py`: new_quote_page() and edit_quote_page() routes
+- `templates/new_quote.html`: Glass dropdown now database-driven
+- `templates/edit_quote.html`: Glass dropdown now database-driven
+
+#### Timeline
+- **Phase 1 (Current)**: Dual-path support - both enum and material ID work
+- **Phase 2 (Future)**: Monitor usage metrics, encourage new path adoption
+- **Phase 3 (Future)**: After 100% adoption, deprecate enum code paths
+- **Phase 4 (Future)**: Remove GlassType enum entirely
+
+#### Testing
+```bash
+# Verify glass materials in database
+docker exec ventanas-beta-db psql -U ventanas_user -d ventanas_beta_db \
+  -c "SELECT id, code, name, cost_per_unit FROM app_materials WHERE category = 'Vidrio' AND is_active = true;"
+
+# Test new quote UI (should show database-driven dropdown)
+# Open http://localhost:8000/quotes/new
+```
+
+**Implementation**: ARCH-20251017-001 (October 2025)
+**Status**: ✅ Complete - Production ready with zero breaking changes
+
+---
+
 ## Recent Fixes
 
 ### HOTFIX-20251006-001: PDF Generation Critical Bug (October 2025)

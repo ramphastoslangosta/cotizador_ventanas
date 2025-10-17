@@ -186,6 +186,13 @@ class ProductBOMServiceDB:
         """
         Obtiene el costo por m2 de un tipo de vidrio desde la base de datos.
 
+        ⚠️  DEPRECATED: This method is deprecated as of ARCH-20251017-001.
+        Use get_glass_cost_by_material_id() instead for database-driven glass selection.
+
+        This method is maintained for backward compatibility with existing quotes
+        that use the GlassType enum. New quotes should use get_glass_cost_by_material_id()
+        to support dynamic glass catalog management.
+
         Uses optional in-memory cache to reduce database queries during
         quote calculations with multiple glass items.
 
@@ -193,13 +200,19 @@ class ProductBOMServiceDB:
         el código de material. Si falla, usa precios hardcoded como fallback.
 
         Args:
-            glass_type: Tipo de vidrio (enum GlassType)
+            glass_type: Tipo de vidrio (enum GlassType) - DEPRECATED
 
         Returns:
             Decimal: Costo por metro cuadrado del vidrio
 
         Raises:
             ValueError: Si el tipo de vidrio no existe y no hay fallback
+
+        Migration:
+            Replace: service.get_glass_cost_per_m2(GlassType.CLARO_6MM)
+            With:    service.get_glass_cost_by_material_id(material_id)
+
+        See: ARCH-20251017-001 for implementation details
         """
         # Check cache first (if enabled)
         if self._glass_price_cache is not None and glass_type in self._glass_price_cache:

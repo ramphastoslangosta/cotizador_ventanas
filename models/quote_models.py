@@ -21,7 +21,23 @@ class AluminumLine(str, Enum):
 
 
 class GlassType(str, Enum):
-    """Tipos de vidrio disponibles"""
+    """
+    Tipos de vidrio disponibles
+
+    ⚠️  DEPRECATED: This enum is deprecated as of ARCH-20251017-001.
+    Use database-driven glass selection via selected_glass_material_id instead.
+
+    This enum is maintained for backward compatibility with existing quotes.
+    New quotes should use selected_glass_material_id to reference glass materials
+    from the app_materials table (category='Vidrio').
+
+    Migration path:
+    - New quotes: Use selected_glass_material_id field in WindowItem model
+    - Existing quotes: Continue to work with selected_glass_type field
+    - Future: This enum will be removed once all quotes are migrated
+
+    See: ARCH-20251017-001 for implementation details
+    """
     CLARO_4MM = "claro_4mm"
     CLARO_6MM = "claro_6mm"
     BRONCE_4MM = "bronce_4mm"
