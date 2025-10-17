@@ -157,7 +157,8 @@
 // Global variables
 let quoteData = null;
 let products = {{ products | tojson }};
-let glassTypes = {{ glass_types | tojson }};
+let glassTypes = {{ glass_types | tojson }};  // OLD PATH - deprecated, for backward compatibility
+let glassMaterials = {{ glass_materials | tojson }};  // NEW PATH - database-driven
 
 // Initialize page
 document.addEventListener('DOMContentLoaded', function() {
@@ -250,9 +251,12 @@ function addItemToContainer(item, index) {
                 </div>
                 <div class="col-md-6 mb-3">
                     <label class="form-label">Tipo de Vidrio</label>
-                    <select class="form-select" id="glass_type_${index}" onchange="updateItemCalculation()">
-                        ${glassTypes.map(gt => `<option value="${gt.value}" ${gt.value === glassTypeValue ? 'selected' : ''}>${gt.label}</option>`).join('')}
+                    <select class="form-select" id="glass_material_id_${index}" onchange="updateItemCalculation()">
+                        ${glassMaterials.map(gm => `<option value="${gm.id}" ${gm.id === item.selected_glass_material_id ? 'selected' : ''}>${gm.name} - $${gm.cost_per_unit.toFixed(2)}/m²</option>`).join('')}
                     </select>
+                    <small class="form-text text-muted">
+                        <i class="bi bi-database"></i> Cargado dinámicamente desde Materials Catalog
+                    </small>
                 </div>
                 <div class="col-md-3 mb-3">
                     <label class="form-label">Ancho (cm)</label>
@@ -285,7 +289,8 @@ function addNewItem() {
     const newIndex = quoteData.items.length;
     const newItem = {
         product_bom_id: products.length > 0 ? products[0].id : null,
-        selected_glass_type: glassTypes.length > 0 ? glassTypes[0].value : 'claro_6mm',
+        selected_glass_material_id: glassMaterials.length > 0 ? glassMaterials[0].id : null,  // NEW PATH
+        selected_glass_type: null,  // OLD PATH - deprecated
         width_cm: 100,
         height_cm: 100,
         quantity: 1,
@@ -411,7 +416,8 @@ function collectQuoteData() {
     quoteData.items.forEach((item, index) => {
         items.push({
             product_bom_id: parseInt(document.getElementById(`product_bom_id_${index}`).value),
-            selected_glass_type: document.getElementById(`glass_type_${index}`).value,
+            selected_glass_material_id: parseInt(document.getElementById(`glass_material_id_${index}`).value),  // NEW PATH
+            selected_glass_type: null,  // OLD PATH - deprecated
             width_cm: parseFloat(document.getElementById(`width_cm_${index}`).value),
             height_cm: parseFloat(document.getElementById(`height_cm_${index}`).value),
             quantity: parseInt(document.getElementById(`quantity_${index}`).value)

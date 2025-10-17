@@ -466,6 +466,10 @@ async def edit_quote_page(
     materials_for_frontend = product_bom_service.get_all_materials()
     products_for_frontend = product_bom_service.get_all_products()
 
+    # Query glass materials from database (NEW PATH - database-driven)
+    material_service = DatabaseMaterialService(db)
+    glass_materials_db = material_service.get_materials_by_category("Vidrio")
+
     # Map enums for frontend
     window_types_display = [
         {"value": wt.value, "label": wt.value.replace('_', ' ').title()} for wt in WindowType
@@ -473,8 +477,23 @@ async def edit_quote_page(
     aluminum_lines_display = [
         {"value": al.value, "label": al.value.replace('_', ' ').title()} for al in AluminumLine
     ]
+
+    # OLD PATH: Keep glass_types enum for backward compatibility (existing quotes)
     glass_types_display = [
         {"value": gt.value, "label": gt.value.replace('_', ' ').title()} for gt in GlassType
+    ]
+
+    # NEW PATH: Database-driven glass materials dropdown
+    glass_materials_display = [
+        {
+            "id": m.id,
+            "code": m.code,
+            "name": m.name,
+            "cost_per_unit": float(m.cost_per_unit),
+            "display_label": f"{m.name} - ${float(m.cost_per_unit):.2f}/m²"
+        }
+        for m in glass_materials_db
+        if m.is_active
     ]
 
     # Convert to JSON-compatible
@@ -488,7 +507,8 @@ async def edit_quote_page(
         "quote_id": quote.id,  # Template expects 'quote_id'
         "quote": quote,
         "products": app_products_json_compatible,
-        "glass_types": glass_types_display,
+        "glass_types": glass_types_display,  # OLD PATH - for existing quotes
+        "glass_materials": glass_materials_display,  # NEW PATH - database-driven
         "window_types": window_types_display,
         "aluminum_lines": aluminum_lines_display,
     })
