@@ -276,7 +276,14 @@ class DatabaseMaterialService:
             AppMaterial.code == code,
             AppMaterial.is_active == True
         ).first()
-    
+
+    def get_materials_by_category(self, category: str):
+        """Get all active materials by category"""
+        return self.db.query(AppMaterial).filter(
+            AppMaterial.category == category,
+            AppMaterial.is_active == True
+        ).all()
+
     def create_material(self, name: str, unit: str, cost_per_unit: Decimal, 
                        category: str = "Otros",
                        code: Optional[str] = None,
