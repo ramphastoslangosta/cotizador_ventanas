@@ -14,7 +14,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
-from database import get_db, User, DatabaseQuoteService, DatabaseColorService, DatabaseCompanyService
+from database import get_db, User, DatabaseQuoteService, DatabaseColorService, DatabaseCompanyService, DatabaseMaterialService
 from services.product_bom_service_db import ProductBOMServiceDB
 from services.pdf_service import PDFQuoteService
 from app.dependencies.auth import get_current_user_flexible, get_current_user_from_cookie
@@ -293,6 +293,10 @@ async def new_quote_page(request: Request, db: Session = Depends(get_db)):
     materials_for_frontend = product_bom_service.get_all_materials()
     products_for_frontend = product_bom_service.get_all_products()
 
+    # Query glass materials from database (NEW PATH - database-driven)
+    material_service = DatabaseMaterialService(db)
+    glass_materials_db = material_service.get_materials_by_category("Vidrio")
+
     # Map enums for frontend
     window_types_display = [
         {"value": wt.value, "label": wt.value.replace('_', ' ').title()} for wt in WindowType
@@ -300,8 +304,23 @@ async def new_quote_page(request: Request, db: Session = Depends(get_db)):
     aluminum_lines_display = [
         {"value": al.value, "label": al.value.replace('_', ' ').title()} for al in AluminumLine
     ]
+
+    # OLD PATH: Keep glass_types enum for backward compatibility
     glass_types_display = [
         {"value": gt.value, "label": gt.value.replace('_', ' ').title()} for gt in GlassType
+    ]
+
+    # NEW PATH: Database-driven glass materials dropdown
+    glass_materials_display = [
+        {
+            "id": m.id,
+            "code": m.code,
+            "name": m.name,
+            "cost_per_unit": float(m.cost_per_unit),
+            "display_label": f"{m.name} - ${float(m.cost_per_unit):.2f}/m²"
+        }
+        for m in glass_materials_db
+        if m.is_active
     ]
 
     # Convert to JSON-compatible format
@@ -316,7 +335,8 @@ async def new_quote_page(request: Request, db: Session = Depends(get_db)):
         "app_products": app_products_json_compatible,
         "window_types": window_types_display,
         "aluminum_lines": aluminum_lines_display,
-        "glass_types": glass_types_display,
+        "glass_types": glass_types_display,  # OLD PATH - deprecated
+        "glass_materials": glass_materials_display,  # NEW PATH - database-driven
         "business_overhead": {
             "profit_margin": settings.default_profit_margin,
             "indirect_costs": settings.default_indirect_costs,
