@@ -311,10 +311,12 @@
 
     const windowTypes = {{ window_types | tojson }};
     const aluminumLines = {{ aluminum_lines | tojson }};
-    const glassTypes = {{ glass_types | tojson }};
+    const glassTypes = {{ glass_types | tojson }};  // OLD PATH - deprecated
+    const glassMaterials = {{ glass_materials | tojson }};  // NEW PATH - database-driven
 
     const appProductsMap = new Map(appProducts.map(p => [p.id, p]));
     const appMaterialsMap = new Map(appMaterials.map(m => [m.id, m]));
+    const glassMaterialsMap = new Map(glassMaterials.map(g => [g.id, g]));
 
     window.addWindowItem = function() {
         const template = document.getElementById('windowItemTemplate');
@@ -386,6 +388,12 @@
     function formatEnumString(enumString) {
         if (!enumString) return 'N/A';
         return enumString.replace(/_/g, ' ').split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+    }
+
+    function getGlassMaterialName(materialId) {
+        if (!materialId) return 'N/A';
+        const material = glassMaterialsMap.get(materialId);
+        return material ? material.name : 'Vidrio Desconocido';
     }
 
     window.filterProductsByWindowType = function(windowTypeSelectElement) {
@@ -762,7 +770,7 @@
                 <div class="border rounded p-2 mb-2">
                     <strong>Ventana ${index + 1}:</strong> ${productName} -
                     ${item.width_cm}cm x ${item.height_cm}cm (${item.quantity} unidad(es))
-                    <br><small class="text-muted">Vidrio: ${formatEnumString(item.selected_glass_type)}</small>
+                    <br><small class="text-muted">Vidrio: ${getGlassMaterialName(item.selected_glass_material_id)}</small>
                     ${item.description ? `<br><small class="text-primary">${item.description}</small>` : ''}
                 </div>
             `;
@@ -853,7 +861,7 @@
                                 <td>
                                     <strong>Ventana ${index + 1}: ${productName}</strong><br>
                                     <small class="text-muted">Tipo: ${formatEnumString(item.window_type)} | Línea: ${formatEnumString(item.aluminum_line)}</small>
-                                    <br><small class="text-muted">Vidrio: ${formatEnumString(item.selected_glass_type)}</small>
+                                    <br><small class="text-muted">Vidrio: ${getGlassMaterialName(item.selected_glass_material_id)}</small>
                                     ${item.description ? `<br><small class="text-primary">${item.description}</small>` : ''}
                                 </td>
                                 <td>
@@ -986,7 +994,8 @@
                 showAlert(`Por favor selecciona un producto para la ventana ${i + 1}`, 'warning');
                 return false;
             }
-            if (!item.selected_glass_type) {
+            // NEW PATH: Check for glass material ID instead of enum
+            if (!item.selected_glass_material_id) {
                 showAlert(`Por favor selecciona el tipo de vidrio para la ventana ${i + 1}`, 'warning');
                 return false;
             }
