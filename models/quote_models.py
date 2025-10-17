@@ -70,15 +70,50 @@ class WindowItem(BaseModel):
     """
     Modelo para un ítem de ventana en la cotización.
     Ahora referencia un `product_bom_id` y permite seleccionar el `glass_type` en la cotización.
+
+    GLASS SELECTION: Supports dual-path approach for backward compatibility
+    - NEW PATH: Use selected_glass_material_id (database ID) - preferred
+    - OLD PATH: Use selected_glass_type (enum) - deprecated but functional
     """
     product_bom_id: int = Field(..., description="ID del producto definido en el catálogo de BOM (AppProduct).")
-    selected_glass_type: GlassType = Field(..., description="Tipo de vidrio seleccionado para este ítem de cotización.")
+
+    # GLASS SELECTION: Dual-path support
+    selected_glass_type: Optional[GlassType] = Field(
+        None,
+        description="[DEPRECATED] Tipo de vidrio seleccionado (enum). Use selected_glass_material_id instead for database-driven selection."
+    )
+    selected_glass_material_id: Optional[int] = Field(
+        None,
+        description="[PREFERRED] ID del material de vidrio desde database. Permite selección dinámica desde Materials Catalog."
+    )
+
     selected_profile_color: Optional[int] = Field(None, description="ID del color seleccionado para los perfiles.")
-    
+
     width_cm: Decimal = Field(..., gt=0, le=1000, description="Ancho en centímetros")
     height_cm: Decimal = Field(..., gt=0, le=1000, description="Alto en centímetros")
     quantity: int = Field(..., gt=0, le=100, description="Cantidad de ventanas")
     description: Optional[str] = None
+
+    @validator('selected_glass_material_id', 'selected_glass_type')
+    def validate_glass_selection(cls, v, values):
+        """
+        Ensure at least one glass selection method is provided.
+        Dual-path validation: must have either material_id (NEW) or glass_type (OLD).
+        """
+        # On first field validation, can't check the other yet
+        if 'selected_glass_type' not in values and 'selected_glass_material_id' not in values:
+            return v
+
+        glass_type = values.get('selected_glass_type')
+        glass_material_id = values.get('selected_glass_material_id')
+
+        # At least one must be provided
+        if glass_type is None and glass_material_id is None:
+            raise ValueError(
+                'Must provide either selected_glass_type (deprecated) or selected_glass_material_id (preferred) for glass selection'
+            )
+
+        return v
 
     @validator('width_cm', 'height_cm')
     def validate_dimensions(cls, v):
@@ -118,13 +153,25 @@ class QuoteRequest(BaseModel):
 class WindowCalculation(BaseModel):
     """
     Resultado del cálculo para una ventana con desglose de costos del BOM dinámico.
+
+    GLASS SELECTION: Supports dual-path approach for backward compatibility
     """
     # Datos originales o del AppProduct
     product_bom_id: int
     product_bom_name: str
     window_type: WindowType
     aluminum_line: AluminumLine
-    selected_glass_type: GlassType # El tipo de vidrio elegido en la cotización
+
+    # GLASS SELECTION: Dual-path support
+    selected_glass_type: Optional[GlassType] = Field(
+        None,
+        description="[DEPRECATED] El tipo de vidrio elegido (enum) - for backward compatibility"
+    )
+    selected_glass_material_id: Optional[int] = Field(
+        None,
+        description="[PREFERRED] ID del material de vidrio desde database"
+    )
+
     width_cm: Decimal
     height_cm: Decimal
     quantity: int
