@@ -156,8 +156,18 @@ def calculate_window_item_from_bom(
         elif bom_item.material_type == MaterialType.CONSUMIBLE:
             total_consumables_cost += total_cost_for_item_quantity
 
-    # Calculate glass cost
-    glass_cost_per_m2 = product_bom_service.get_glass_cost_per_m2(item.selected_glass_type)
+    # Calculate glass cost - DUAL PATH SUPPORT
+    # NEW PATH: Use material ID (database-driven)
+    # OLD PATH: Use enum (deprecated but functional)
+    if item.selected_glass_material_id is not None:
+        # NEW PATH: Database-driven glass selection by material ID
+        glass_cost_per_m2 = product_bom_service.get_glass_cost_by_material_id(item.selected_glass_material_id)
+    elif item.selected_glass_type is not None:
+        # OLD PATH: Enum-based glass selection (deprecated)
+        glass_cost_per_m2 = product_bom_service.get_glass_cost_per_m2(item.selected_glass_type)
+    else:
+        raise ValueError("Must provide either selected_glass_material_id or selected_glass_type for glass selection")
+
     glass_waste_factor = Decimal('1.05')
     total_glass_cost = area_m2 * glass_cost_per_m2 * glass_waste_factor * item.quantity
     total_glass_cost = round_currency(total_glass_cost)
@@ -184,7 +194,9 @@ def calculate_window_item_from_bom(
         product_bom_name=product.name,
         window_type=product.window_type,
         aluminum_line=product.aluminum_line,
-        selected_glass_type=item.selected_glass_type,
+        # DUAL PATH: Include both for backward compatibility
+        selected_glass_type=item.selected_glass_type,  # OLD PATH
+        selected_glass_material_id=item.selected_glass_material_id,  # NEW PATH
         width_cm=item.width_cm,
         height_cm=item.height_cm,
         quantity=item.quantity,
