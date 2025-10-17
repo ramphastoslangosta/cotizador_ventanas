@@ -268,6 +268,65 @@ class ProductBOMServiceDB:
 
         return fallback_price
 
+    def get_glass_cost_by_material_id(self, material_id: int) -> Decimal:
+        """
+        Get glass cost per m² from database by material ID (not enum).
+
+        This is the NEW database-driven approach for glass selection.
+        Replaces enum-based lookup with direct material ID lookup.
+
+        Used by dynamic dropdown UI where users select glass materials
+        by their database ID instead of hardcoded GlassType enum.
+
+        Args:
+            material_id: Database ID of the glass material
+
+        Returns:
+            Decimal: Cost per square meter of the glass material
+
+        Raises:
+            ValueError: If material ID not found or not a glass material
+
+        Example:
+            # User selects "Vidrio Claro 6mm" with ID 12 from dropdown
+            cost = service.get_glass_cost_by_material_id(12)
+            # Returns: Decimal('120.00')
+        """
+        # Check cache first (cache by material_id now)
+        if self._glass_price_cache is not None and material_id in self._glass_price_cache:
+            return self._glass_price_cache[material_id]
+
+        # Query database by material ID
+        glass_material = (
+            self.db.query(DBAppMaterial)
+            .filter(DBAppMaterial.id == material_id)
+            .filter(DBAppMaterial.category == "Vidrio")
+            .filter(DBAppMaterial.is_active == True)
+            .first()
+        )
+
+        if not glass_material:
+            raise ValueError(
+                f"Glass material with ID {material_id} not found or not active. "
+                f"Ensure material exists in app_materials table with category='Vidrio'."
+            )
+
+        price = Decimal(str(glass_material.cost_per_unit))
+
+        # Cache the price (if caching enabled)
+        if self._glass_price_cache is not None:
+            self._glass_price_cache[material_id] = price
+
+        # Audit log: price source for transparency
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.debug(
+            f"Glass price loaded by material_id: ID={material_id} "
+            f"({glass_material.name}) = ${price}/m² [NEW PATH]"
+        )
+
+        return price
+
     def clear_glass_price_cache(self):
         """Clear glass price cache - call after updating glass material prices"""
         if self._glass_price_cache is not None:
