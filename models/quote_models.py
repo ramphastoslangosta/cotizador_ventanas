@@ -1,5 +1,5 @@
 # models/quote_models.py
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, validator, root_validator
 from typing import List, Optional
 from decimal import Decimal
 from datetime import datetime
@@ -110,16 +110,12 @@ class WindowItem(BaseModel):
     quantity: int = Field(..., gt=0, le=100, description="Cantidad de ventanas")
     description: Optional[str] = None
 
-    @validator('selected_glass_material_id', 'selected_glass_type')
-    def validate_glass_selection(cls, v, values):
+    @root_validator(skip_on_failure=True)
+    def validate_glass_selection(cls, values):
         """
         Ensure at least one glass selection method is provided.
         Dual-path validation: must have either material_id (NEW) or glass_type (OLD).
         """
-        # On first field validation, can't check the other yet
-        if 'selected_glass_type' not in values and 'selected_glass_material_id' not in values:
-            return v
-
         glass_type = values.get('selected_glass_type')
         glass_material_id = values.get('selected_glass_material_id')
 
@@ -129,7 +125,7 @@ class WindowItem(BaseModel):
                 'Must provide either selected_glass_type (deprecated) or selected_glass_material_id (preferred) for glass selection'
             )
 
-        return v
+        return values
 
     @validator('width_cm', 'height_cm')
     def validate_dimensions(cls, v):
