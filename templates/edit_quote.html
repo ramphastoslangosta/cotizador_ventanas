@@ -211,9 +211,28 @@ function populateItems() {
     if (quoteData.items && quoteData.items.length > 0) {
         quoteData.items.forEach((item, index) => {
             // HOTFIX-20251001-001: Normalize glass type to string
-            if (typeof item.selected_glass_type === 'object') {
+            // BUGFIX-20251027: Add null check (typeof null === 'object' in JS!)
+            if (item.selected_glass_type && typeof item.selected_glass_type === 'object') {
                 item.selected_glass_type = item.selected_glass_type.value || item.selected_glass_type;
             }
+
+            // BUGFIX-20251027: Convert old enum path to new material_id path for backward compatibility
+            if (!item.selected_glass_material_id && item.selected_glass_type) {
+                // Map enum code to material by matching the code pattern
+                // e.g., "claro_6mm" → find material with code "VID-CLARO-6"
+                const enumParts = item.selected_glass_type.split('_');
+                if (enumParts.length >= 2) {
+                    const glassType = enumParts[0].toUpperCase();
+                    const thickness = enumParts[1].replace('mm', '').replace('MM', '');
+                    const expectedCode = `VID-${glassType}-${thickness}`;
+
+                    const matchingMaterial = glassMaterials.find(gm => gm.code === expectedCode);
+                    if (matchingMaterial) {
+                        item.selected_glass_material_id = matchingMaterial.id;
+                    }
+                }
+            }
+
             addItemToContainer(item, index);
         });
     } else {
@@ -229,7 +248,8 @@ function addItemToContainer(item, index) {
     const productName = product ? product.name : 'Producto no encontrado';
 
     // HOTFIX-20251001-001: Normalize glass type to string (handle object or string)
-    const glassTypeValue = typeof item.selected_glass_type === 'object'
+    // BUGFIX-20251027: Add null check (typeof null === 'object' in JS!)
+    const glassTypeValue = (item.selected_glass_type && typeof item.selected_glass_type === 'object')
         ? item.selected_glass_type.value || item.selected_glass_type
         : item.selected_glass_type;
 
