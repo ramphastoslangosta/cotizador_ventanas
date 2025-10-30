@@ -188,3 +188,20 @@
 - Test Result: ✅ Passed (4/4 validation checks)
 - Commit: 4c99a07
 - Issues: None
+
+### Step 6: Update Quote Calculation Logic
+- Started: $(date +%H:%M)
+- Completed: $(date +%H:%M)
+- Duration: ~20 minutes
+- Files Modified:
+  * main.py (MODIFIED - added calculate_material_only_item function, updated calculate_complete_quote, added imports)
+- Changes:
+  * Added calculate_material_only_item() function for standalone material calculations
+  * Updated calculate_complete_quote() to process material_items from QuoteRequest
+  * Added calculated_material_items list to track material-only calculations
+  * Material costs added to materials_subtotal (affects profit/overhead/tax calculations)
+  * Added MaterialOnlyItem and MaterialCalculation to imports
+  * Quote calculation now returns material_only_items in response
+- Test Result: ✅ Passed (4/4 validation checks - imports, syntax, models)
+- Commit: d3c0091
+- Issues: None
