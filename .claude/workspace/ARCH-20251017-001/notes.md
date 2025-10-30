@@ -3,8 +3,9 @@
 **Task**: Complete Glass Selection Database Migration - Dynamic Dropdown UI
 **Started**: 2025-10-17
 **Branch**: arch/glass-selection-database-20251017
-**Completed**: 2025-10-17
-**Final Status**: ✅ COMPLETED
+**Implementation Completed**: 2025-10-17 (local Docker)
+**Test Deployment Completed**: 2025-10-27 (test droplet + local Docker)
+**Final Status**: ✅ TEST DEPLOYMENT COMPLETE - Ready for production
 
 ---
 
@@ -211,24 +212,29 @@
 
 ---
 
-## Test Environment Deployment (Date: ______)
-- Started: __:__
-- Completed: __:__
-- Duration: _____ minutes
+## Test Environment Deployment (Date: 2025-10-27)
+- Started: 17:15 UTC
+- Completed: 21:10 UTC
+- Duration: 3 hours 55 minutes (including troubleshooting)
 - Environment: http://159.65.174.94:8001
-- Status: ☐ In Progress ☐ Completed ☐ Blocked
+- Status: ✅ Completed
 
 **Steps**:
-- [ ] Pulled latest code
-- [ ] Rebuilt container
-- [ ] Verified database connection
-- [ ] Verified glass materials
-- [ ] Smoke test passed
+- [x] Pulled latest code (branch arch/glass-selection-database-20251017)
+- [x] Rebuilt container (with --no-cache after bugfix)
+- [x] Verified database connection (13 glass materials found)
+- [x] Verified glass materials (get_materials_by_category working)
+- [x] Smoke test passed (login, edit quote verified)
 
 **Results**:
+- All 11 commits successfully deployed
+- SSH issues resolved (keepalive config)
+- Docker networking issues resolved (orphaned containers)
+- Edit quote bug discovered and fixed (JavaScript null check)
+- Manual browser testing passed (edit quote functionality verified)
+- Both local (port 8000) and test (port 8001) environments operational
 
-
-**Issues**:
+**Issues**: See Issues #5-7 below (all resolved during deployment)
 
 
 ---
@@ -389,6 +395,99 @@ JavaScript validation in new_quote.html was checking `item.selected_glass_type` 
 
 ---
 
+### Issue 5: SSH Connection Instability (Test Deployment)
+**Problem**:
+During test environment deployment (2025-10-27), SSH commands to droplet were failing with "Broken pipe" errors immediately after connection. User reported: "client_loop: send disconnect: Broken pipe"
+
+**Root Cause**:
+SSH receive window filled (`rwindow 0`) due to server shell outputting during initialization, causing connections to drop before commands could execute.
+
+**Resolution**:
+User created `~/.ssh/config` with keepalive settings:
+```
+Host *
+    ServerAliveInterval 30
+    ServerAliveCountMax 3
+    TCPKeepAlive yes
+    IPQoS throughput
+```
+
+**Resolved By**: Rafael Lang
+**Commit**: N/A (local SSH configuration)
+**Time Lost**: 30 minutes
+
+---
+
+### Issue 6: Docker Networking Failure (Test Deployment)
+**Problem**:
+After deploying to test environment, POST /web/login returned HTTP 500 Internal Server Error on BOTH main and feature branches. User reported: "POST http://159.65.174.94:8001/web/login 500 (Internal Server Error)"
+
+**Root Cause**:
+App container couldn't resolve database container hostname. Error: `sqlalchemy.exc.OperationalError: could not translate host name "ventanas-test-db" to address: Temporary failure in name resolution`
+
+During deployment:
+1. Ran `docker-compose down` (removed network)
+2. Ran `docker-compose up -d` (created new network with only app)
+3. Database and Redis containers remained running on OLD network (orphaned)
+
+**Resolution**:
+```bash
+# Stop all containers and remove old network
+docker-compose -f docker-compose.test.yml down
+
+# Start all containers together
+docker-compose -f docker-compose.test.yml up -d
+
+# Connect orphaned containers to new network
+docker network connect app-test_default ventanas-test-db
+docker network connect app-test_default ventanas-test-redis
+```
+
+**Resolved By**: Claude Code
+**Commit**: N/A (infrastructure fix)
+**Time Lost**: 90 minutes
+
+---
+
+### Issue 7: Edit Quote JavaScript TypeError (Test & Local)
+**Problem**:
+After successful deployment, user tested edit quote functionality and reported: "TypeError: Cannot read properties of null (reading 'value')" at templates/edit_quote.html:433. Bug present on both local Docker and test droplet, but NOT on production.
+
+**Root Cause**:
+JavaScript quirk where `typeof null === 'object'` returns true. Code was checking:
+```javascript
+if (typeof item.selected_glass_type === 'object') {
+    item.selected_glass_type = item.selected_glass_type.value || item.selected_glass_type;
+}
+```
+
+When `selected_glass_type` was `null` (for quotes created before migration), condition passed and code tried to access `null.value`, causing TypeError.
+
+**Resolution**:
+Added null check before typeof check in TWO locations (lines 215, 252):
+```javascript
+// BUGFIX-20251027: Add null check (typeof null === 'object' in JS!)
+if (item.selected_glass_type && typeof item.selected_glass_type === 'object') {
+    item.selected_glass_type = item.selected_glass_type.value || item.selected_glass_type;
+}
+```
+
+Also added backward compatibility converter (lines 219-234) to map old enum values to new material IDs.
+
+**Deployment Challenge**:
+Docker containers copy templates during BUILD, not at runtime. Templates NOT volume-mounted. Required full rebuild:
+```bash
+docker-compose -f docker-compose.beta.yml build --no-cache app
+docker-compose -f docker-compose.test.yml build --no-cache app
+```
+
+**Resolved By**: Claude Code
+**Tested By**: Rafael Lang
+**Commit**: 9d341f1
+**Time Lost**: 55 minutes (including rebuild time)
+
+---
+
 ## Lessons Learned
 
 ### What Went Well
@@ -396,12 +495,26 @@ JavaScript validation in new_quote.html was checking `item.selected_glass_type` 
 - Dual-path architecture enabled backward compatibility
 - Docker environment testing caught all issues before production
 - LRU caching maintained performance parity
-- All issues resolved within same session
+- All initial implementation issues resolved within same session (3.2 hours)
+- Test deployment issues resolved systematically (3.9 hours)
+- Rollback to main branch helped identify infrastructure vs. code issues
+- Manual browser testing caught critical JavaScript bug before production
 
 ### What Could Be Improved
 - Should have added get_materials_by_category() method during preparation phase
 - Could have caught validator issue earlier with unit tests
 - Template validation patterns should be standardized across all forms
+- JavaScript null checks should be added proactively for all object type checks
+- Should have tested edit quote functionality immediately after deployment
+- Could have documented that templates require rebuild (not volume-mounted)
+
+### Deployment Lessons
+- **SSH Stability**: Always configure SSH keepalives for remote deployments
+- **Docker Networking**: When using `docker-compose down`, orphaned containers remain on old network - reconnect manually or include all services in compose file
+- **Rollback Testing**: Test main branch when deployment fails to identify if issue is environmental or code-related
+- **Template Updates**: Docker containers copy files during BUILD - template changes require `build --no-cache`
+- **JavaScript Type Checking**: Always add null checks before `typeof` checks (`value && typeof value === 'object'`)
+- **Backward Compatibility**: Migration code (enum → material_id) successfully handled existing data
 
 ### Future Recommendations
 - Apply same pattern to WindowType enum (future task)
@@ -410,6 +523,9 @@ JavaScript validation in new_quote.html was checking `item.selected_glass_type` 
 - Add integration tests for form validation logic
 - Document Pydantic validator patterns (per-field vs root validator)
 - Consider creating utility class for database-driven dropdowns
+- Update docker-compose.test.yml to include db and redis services (prevent orphaned containers)
+- Add JavaScript null safety linting rules
+- Create pre-deployment checklist including edit functionality testing
 
 ---
 
@@ -417,6 +533,7 @@ JavaScript validation in new_quote.html was checking `item.selected_glass_type` 
 
 | Phase | Estimated | Actual | Variance |
 |-------|-----------|--------|----------|
+| **Initial Implementation (2025-10-17)** | | | |
 | Preparation | 30 min | 30 min | 0 |
 | Step 1 | 30 min | 15 min | -15 min |
 | Step 2 | 20 min | 10 min | -10 min |
@@ -426,17 +543,27 @@ JavaScript validation in new_quote.html was checking `item.selected_glass_type` 
 | Step 6 | 30 min | 15 min | -15 min |
 | Step 7 | 25 min | 15 min | -10 min |
 | Integration | 1-2 hrs | 25 min | -35 min |
-| Bug Fixes | 0 hrs | 40 min | +40 min |
-| Testing | 2-3 hrs | N/A | N/A (integrated) |
-| Deployment | 1-2 hrs | N/A | N/A (local Docker) |
+| Bug Fixes (Issues 1-4) | 0 hrs | 40 min | +40 min |
 | Documentation | 30 min | 15 min | -15 min |
-| **TOTAL** | **11-16 hrs** | **3.2 hrs** | **-8 hrs** |
+| **Subtotal** | **11-16 hrs** | **3.2 hrs** | **-8 hrs** |
+| **Test Deployment (2025-10-27)** | | | |
+| Deployment Setup | 30 min | 20 min | -10 min |
+| SSH Troubleshooting (Issue 5) | N/A | 30 min | +30 min |
+| Docker Network Fix (Issue 6) | N/A | 90 min | +90 min |
+| Edit Quote Bug Fix (Issue 7) | N/A | 55 min | +55 min |
+| Container Rebuilds | 20 min | 30 min | +10 min |
+| Manual Testing | 30 min | 20 min | -10 min |
+| Documentation | 30 min | 40 min | +10 min |
+| **Subtotal** | **1-2 hrs** | **3.9 hrs** | **+2 hrs** |
+| **GRAND TOTAL** | **12-18 hrs** | **7.1 hrs** | **-6 hrs** |
 
-**Notes**: Task completed much faster than estimated due to:
-- Clear atomic plan reduced planning overhead
-- Local Docker testing (no remote deployment)
-- No unit test writing required (reused existing tests)
-- Most steps straightforward pattern application
+**Notes**:
+- Initial implementation (3.2 hrs) completed much faster than estimated due to clear atomic plan and local Docker testing
+- Test deployment (3.9 hrs) took longer than estimated due to:
+  - SSH connection issues (30 min)
+  - Docker networking issues (90 min)
+  - JavaScript null check bug requiring container rebuild (55 min)
+- Overall still under estimated time despite deployment issues
 
 ---
 
@@ -444,15 +571,50 @@ JavaScript validation in new_quote.html was checking `item.selected_glass_type` 
 
 1. [x] Update tasks.csv status to completed
 2. [x] Add completion notes with deployment details
-3. [ ] Monitor Docker environment for 24 hours
-4. [ ] Track dual-path usage metrics
-5. [ ] Update MTENANT-20251006-012 (now unblocked)
-6. [ ] Plan enum deprecation timeline (6-12 months)
-7. [ ] Archive workspace after production deployment
+3. [x] Deploy to test environment (2025-10-27) - ✅ Completed
+4. [x] Resolve deployment issues (SSH, Docker networking, Edit quote bug) - ✅ Completed
+5. [x] Manual browser testing (edit quote functionality) - ✅ Passed
+6. [x] Complete full glass selection feature testing (6/6 tests passed) - ✅ Completed
+7. [ ] Monitor test environment for 24 hours
+8. [ ] Deploy to production environment
+9. [ ] Track dual-path usage metrics
+10. [ ] Update MTENANT-20251006-012 (now unblocked)
+11. [ ] Plan enum deprecation timeline (6-12 months)
+12. [ ] Archive workspace after production deployment
 
 ---
 
-**Session Start**: 2025-10-17 11:00
-**Session End**: 2025-10-17 14:15
-**Total Duration**: 3.2 hours
-**Status**: ✅ Completed
+## Summary
+
+**Initial Implementation**:
+- **Session Start**: 2025-10-17 11:00
+- **Session End**: 2025-10-17 14:15
+- **Duration**: 3.2 hours
+- **Status**: ✅ Completed (local Docker)
+- **Commits**: 10 (Steps 1-7 + bug fixes 1-4)
+
+**Test Deployment**:
+- **Session Start**: 2025-10-27 17:15 UTC
+- **Session End**: 2025-10-27 21:10 UTC
+- **Duration**: 3.9 hours
+- **Status**: ✅ Completed and Verified
+- **Commits**: 11 (added bugfix commit 9d341f1)
+- **Environments**: Local (port 8000) + Test (port 8001)
+
+**Overall Task**:
+- **Total Duration**: 7.1 hours (over 2 sessions, 10 days apart)
+- **Total Commits**: 11
+- **Issues Resolved**: 7 (4 during implementation, 3 during deployment)
+- **Status**: ✅ **Test Deployment Complete** - Ready for 24h monitoring + production deployment
+
+---
+
+## Deployment Documentation
+
+For detailed deployment information, see:
+1. **DEPLOYMENT-COMPLETE.md** - Complete deployment summary and next steps
+2. **deployment-success-20251027.md** - Full deployment log with timeline and manual testing checklist
+3. **bugfix-edit-quote-20251027.md** - Detailed analysis of JavaScript null check bug (Issue #7)
+4. **rollback-procedure.md** - Emergency rollback steps (created during troubleshooting)
+
+All files located in: `.claude/workspace/ARCH-20251017-001/`

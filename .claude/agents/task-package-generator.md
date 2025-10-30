@@ -69,711 +69,135 @@ TASK-20250929-001,"Fix SQL injection in login","Implement parameterized queries 
 ```
 
 ### Template 2: Branch Creation Script
-```bash
-#!/bin/bash
-# Phase {N}: {Phase Title}
-# Generated: {TIMESTAMP} by task-package-generator
 
-set -e
+**Template Location**: `agents/templates/branch-script.sh`
 
-echo "🌿 Creating Phase {N} branches..."
+**How to Use**:
+1. Read the template file using Read tool
+2. Replace placeholders: `{N}`, `{Phase Title}`, `{TIMESTAMP}`, `{BRANCH_COMMANDS}`, `{COUNT}`, `{PHASE_PREFIX}`
+3. Write to `scripts/branches/create-phase-{N}-branches.sh`
+4. Make executable with `chmod +x`
 
-# Verify on main branch
-CURRENT_BRANCH=$(git branch --show-current)
-if [ "$CURRENT_BRANCH" != "main" ]; then
-    echo "⚠️  Warning: Not on main branch (currently on $CURRENT_BRANCH)"
-    read -p "Continue anyway? (y/N): " -n 1 -r
-    echo
-    [[ ! $REPLY =~ ^[Yy]$ ]] && exit 1
-fi
+**Placeholder Reference**:
+- `{N}` - Phase number (1, 2, 3)
+- `{Phase Title}` - Descriptive phase title
+- `{TIMESTAMP}` - ISO timestamp
+- `{BRANCH_COMMANDS}` - Generated git checkout -b commands
+- `{COUNT}` - Number of branches created
+- `{PHASE_PREFIX}` - Prefix for filtering branches
 
-# Create branches for each task
-{BRANCH_COMMANDS}
+### Template 3: PR Templates
 
-# Return to main
-git checkout main
-echo "✅ All Phase {N} branches created successfully"
-echo "📋 Summary: {COUNT} branches created"
-git branch | grep "{PHASE_PREFIX}"
+**Template Locations**:
+- Security fixes: `agents/templates/pr-template-security.md`
+- Performance: `agents/templates/pr-template-performance.md`
+- Architecture: `agents/templates/pr-template-architecture.md`
+
+**How to Use**:
+1. Read the appropriate template file using Read tool based on task category
+2. Replace all placeholders with task-specific values
+3. Write to `.github/pull_request_template/{category}.md`
+
+**Common Placeholders** (all templates):
+- `{TASK_ID}` - Task identifier from tasks.csv
+- `{PRIORITY}` - Task priority level
+- `{DETAILED_DESCRIPTION}` - Extracted from code review
+- `{EFFORT}` - Estimated effort in days
+- `{DATE}` - Target completion date
+- `{DEPENDENCY_TASKS}` - Comma-separated task IDs
+- `{BLOCKED_TASKS}` - Tasks blocked by this one
+
+**Security Template Specific**:
+- `{SEVERITY}` - Vulnerability severity (critical/high/medium/low)
+- `{VULNERABILITY_DEMONSTRATION}` - Example exploit
+- `{PATCHED_BEHAVIOR}` - Fixed behavior example
+- `{SOLUTION_TYPE}` - Type of fix (parameterization, sanitization, etc.)
+
+**Performance Template Specific**:
+- `{IMPACT_LEVEL}` - Performance impact description
+- `{CURRENT_METRIC}` / `{TARGET_METRIC}` - Before/after metrics
+- `{BENCHMARK_BEFORE}` / `{BENCHMARK_AFTER}` - Benchmark results
+
+**Architecture Template Specific**:
+- `{TYPE}` - Refactoring type (pattern implementation, SOLID compliance, etc.)
+- `{CURRENT_PATTERN}` / `{TARGET_PATTERN}` - Design patterns
+- `{BREAKING_CHANGES_DESCRIPTION}` - Impact of breaking changes
+
+### Template 4: Test Scaffold
+
+**Template Location**: `agents/templates/test-scaffold.py`
+
+**How to Use**:
+1. Read the template file using Read tool
+2. Replace all placeholders with task-specific values
+3. Write to `tests/test_{feature}_scaffold.py`
+
+**Placeholder Reference**:
+- `{FEATURE_AREA}` - Feature being tested (e.g., "Quote Routes", "Authentication")
+- `{TIMESTAMP}` - ISO timestamp
+- `{TASK_ID}` - Task identifier
+- `{REPORT_SECTION}` - Link to code review finding
+- `{REQUIREMENT_1}`, `{REQUIREMENT_2}`, `{REQUIREMENT_3}` - Test coverage requirements
+- `{SOURCE_FILE}` - Implementation file path
+- `{LINES}` - Line numbers
+- `{CODE_REVIEW_FINDING}` - Description from code review
+- `{FeatureName}` - PascalCase feature name for class names
+- `{scenario_1}`, `{scenario_2}` - Test scenario names (snake_case)
+- `{feature description}` - Human-readable feature description
+- `{workflow}` - Workflow name for E2E tests
+- `{operation}` - Operation name for performance tests
+- `{PERFORMANCE_TARGET}` - Target performance metric
+
+### Template 5: Progress Dashboard
+
+**Template Location**: `agents/templates/dashboard.html`
+
+**How to Use**:
+1. Read the template file using Read tool
+2. Replace all placeholders with calculated metrics and task data
+3. Write to `docs/task-dashboards/refactoring-progress-{timestamp}.html`
+
+**Placeholder Reference**:
+
+**Header Placeholders**:
+- `{PROJECT_NAME}` - Project/repository name
+- `{TIMESTAMP}` - Generation timestamp (YYYY-MM-DD HH:mm:ss)
+- `{LAST_UPDATE}` - Last update timestamp
+- `{REPORT_FILE}` - Code review report filename
+
+**Metrics Placeholders**:
+- `{COMPLETION_PCT}` - Overall completion percentage (0-100)
+- `{COMPLETED_TASKS}` - Number of completed tasks
+- `{TOTAL_TASKS}` - Total number of tasks
+- `{VELOCITY}` - Tasks completed per day (calculated)
+- `{CRITICAL_TASKS}` - Total critical priority tasks
+- `{CRITICAL_PENDING}` - Pending critical tasks
+- `{ETA_DATE}` - Estimated completion date
+- `{REMAINING_DAYS}` - Days until estimated completion
+
+**Phase Placeholders** (repeat for PHASE1, PHASE2, PHASE3):
+- `{PHASE1_PCT}`, `{PHASE2_PCT}`, `{PHASE3_PCT}` - Phase completion percentages
+- `{PHASE1_DONE}`, `{PHASE2_DONE}`, `{PHASE3_DONE}` - Completed tasks in phase
+- `{PHASE1_TOTAL}`, `{PHASE2_TOTAL}`, `{PHASE3_TOTAL}` - Total tasks in phase
+
+**Task Data Placeholders**:
+- `{TASK_ROWS}` - HTML table rows for all tasks (generated from tasks.csv)
+- `{TASK_DATA_JSON}` - JSON array of task objects for JavaScript filtering
+
+**Task JSON Structure**:
+```javascript
+{
+  "task_id": "TASK-20250929-001",
+  "title": "Fix SQL injection",
+  "priority": "critical",
+  "status": "pending",
+  "phase": "phase-1",
+  "effort": "1",
+  "dependencies": "none",
+  "branch_name": "security/sql-injection-fix-20250929"
+}
 ```
 
-### Template 3: Security Fix PR Template
-```markdown
-## 🔒 Security Vulnerability Fix
-
-**Task ID**: {TASK_ID}
-**Priority**: {PRIORITY}
-**Severity**: {SEVERITY}
-**Related Code Review**: [Link to finding in report]
-
-### 🎯 Vulnerability Description
-{DETAILED_DESCRIPTION}
-
-**Affected Files**:
-- {FILE_PATH_1} (lines {LINES})
-- {FILE_PATH_2} (lines {LINES})
-
-### 🔍 Root Cause Analysis
-{ROOT_CAUSE_EXPLANATION}
-
-### ✅ Solution Implemented
-- [ ] Vulnerability patched with {SOLUTION_TYPE}
-- [ ] Input validation added
-- [ ] Output sanitization implemented
-- [ ] Security tests created
-- [ ] Code review by security team
-- [ ] Documentation updated
-
-### 🧪 Testing Evidence
-
-**Before Fix**:
-```
-{VULNERABILITY_DEMONSTRATION}
-```
-
-**After Fix**:
-```
-{PATCHED_BEHAVIOR}
-```
-
-**Test Coverage**:
-- Unit tests: {TEST_FILE} (lines {LINES})
-- Integration tests: {TEST_FILE} (lines {LINES})
-- Security tests: {TEST_FILE} (lines {LINES})
-
-### 📋 Security Checklist
-- [ ] OWASP Top 10 reviewed
-- [ ] Input validation comprehensive
-- [ ] Output encoding correct
-- [ ] Authentication verified
-- [ ] Authorization enforced
-- [ ] Secrets removed from code
-- [ ] Error messages sanitized
-- [ ] Logging doesn't expose sensitive data
-- [ ] Rate limiting considered
-- [ ] Session management secure
-
-### 🚀 Deployment Plan
-**Risk Level**: {RISK_LEVEL}
-
-**Prerequisites**:
-- [ ] Staging environment tested
-- [ ] Database migrations: {YES/NO}
-- [ ] Configuration changes: {DETAILS}
-- [ ] Monitoring alerts configured
-
-**Rollback Procedure**:
-```bash
-# Emergency rollback steps
-git checkout main
-git revert {COMMIT_HASH}
-git push origin main
-# Additional cleanup: {STEPS}
-```
-
-### 📊 Performance Impact
-- Response time delta: {MEASUREMENT}
-- Memory usage delta: {MEASUREMENT}
-- Database query impact: {MEASUREMENT}
-
-### 👥 Reviewers Required
-- [ ] @security-lead (mandatory)
-- [ ] @senior-developer
-- [ ] @devops-team (for deployment)
-
-### 🔗 Related Tasks
-**Dependencies**: {DEPENDENCY_TASKS}
-**Blocks**: {BLOCKED_TASKS}
-
----
-**Estimated Effort**: {EFFORT} days
-**Completion Deadline**: {DATE}
-```
-
-### Template 4: Test Scaffold (Python)
-```python
-"""
-Test scaffold for: {FEATURE_AREA}
-Generated: {TIMESTAMP} by task-package-generator
-Task: {TASK_ID}
-Code Review Reference: {REPORT_SECTION}
-
-Test Coverage Requirements:
-1. {REQUIREMENT_1}
-2. {REQUIREMENT_2}
-3. {REQUIREMENT_3}
-
-Related Files:
-- Implementation: {SOURCE_FILE} (lines {LINES})
-- Original Issue: {CODE_REVIEW_FINDING}
-"""
-
-import pytest
-from unittest.mock import Mock, patch
-from datetime import datetime, timedelta
-
-# Import modules under test
-# TODO: Add actual imports
-# from {module} import {function/class}
-
-
-class Test{FeatureName}:
-    """Test suite for {feature description}"""
-    
-    @pytest.fixture
-    def setup_data(self):
-        """Setup test data and mocks"""
-        # TODO: Implement test data setup
-        return {
-            # Add test data structure
-        }
-    
-    def test_{scenario_1}_success(self, setup_data):
-        """
-        Test: {Scenario description}
-        Given: {Preconditions}
-        When: {Action}
-        Then: {Expected outcome}
-        """
-        # TODO: Implement test
-        pytest.skip("TODO: Implement {scenario_1} success test")
-        
-        # Template structure:
-        # 1. Arrange
-        # test_data = setup_data
-        
-        # 2. Act
-        # result = function_under_test(test_data)
-        
-        # 3. Assert
-        # assert result == expected_value
-    
-    def test_{scenario_1}_failure(self, setup_data):
-        """
-        Test: {Scenario failure case}
-        Given: {Preconditions}
-        When: {Action with invalid input}
-        Then: {Expected error handling}
-        """
-        # TODO: Implement failure test
-        pytest.skip("TODO: Implement {scenario_1} failure test")
-    
-    def test_{scenario_2}_edge_cases(self, setup_data):
-        """
-        Test: {Edge case scenario}
-        """
-        # TODO: Implement edge case tests
-        pytest.skip("TODO: Implement edge case tests")
-    
-    @pytest.mark.parametrize("input_data,expected", [
-        # TODO: Add test parameters
-        # (input1, expected1),
-        # (input2, expected2),
-    ])
-    def test_{scenario}_parametrized(self, input_data, expected):
-        """Parametrized test for {scenario}"""
-        # TODO: Implement parametrized test
-        pytest.skip("TODO: Implement parametrized test")
-
-
-class Test{FeatureName}Integration:
-    """Integration tests for {feature}"""
-    
-    def test_end_to_end_{workflow}(self, setup_data):
-        """
-        End-to-end test for {workflow}
-        """
-        # TODO: Implement integration test
-        pytest.skip("TODO: Implement E2E test")
-
-
-class Test{FeatureName}Performance:
-    """Performance tests for {feature}"""
-    
-    def test_performance_{operation}(self, setup_data, benchmark):
-        """
-        Performance test for {operation}
-        Target: {PERFORMANCE_TARGET}
-        """
-        # TODO: Implement performance test
-        pytest.skip("TODO: Implement performance test")
-        
-        # Example with pytest-benchmark:
-        # result = benchmark(function_under_test, test_data)
-        # assert result < target_time
-
-
-class Test{FeatureName}Security:
-    """Security tests for {feature}"""
-    
-    def test_input_validation(self):
-        """Test that malicious inputs are rejected"""
-        # TODO: Implement security test
-        pytest.skip("TODO: Implement input validation test")
-    
-    def test_authorization_enforcement(self):
-        """Test that authorization is properly enforced"""
-        # TODO: Implement authorization test
-        pytest.skip("TODO: Implement authorization test")
-
-
-# Rollback testing
-class Test{FeatureName}Rollback:
-    """Tests to ensure safe rollback capability"""
-    
-    def test_backward_compatibility(self):
-        """Ensure changes are backward compatible"""
-        # TODO: Implement backward compatibility test
-        pytest.skip("TODO: Implement rollback compatibility test")
-```
-
-### Template 5: Progress Dashboard HTML
-```html
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Refactoring Progress - {PROJECT_NAME}</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { 
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 20px;
-        }
-        .container {
-            max-width: 1600px;
-            margin: 0 auto;
-            background: white;
-            border-radius: 16px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-            overflow: hidden;
-        }
-        .header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 40px;
-            position: relative;
-        }
-        .header h1 { font-size: 36px; margin-bottom: 10px; }
-        .header .meta { opacity: 0.9; font-size: 14px; }
-        .header .meta a { color: white; text-decoration: underline; }
-        
-        .metrics-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 20px;
-            padding: 30px;
-            background: #f8f9fa;
-        }
-        .metric-card {
-            background: white;
-            padding: 25px;
-            border-radius: 12px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            transition: transform 0.2s, box-shadow 0.2s;
-        }
-        .metric-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 8px 12px rgba(0,0,0,0.15);
-        }
-        .metric-card h3 {
-            font-size: 14px;
-            color: #64748b;
-            margin-bottom: 15px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-        .metric-value {
-            font-size: 48px;
-            font-weight: 700;
-            line-height: 1;
-            margin-bottom: 10px;
-        }
-        .metric-label {
-            font-size: 14px;
-            color: #94a3b8;
-        }
-        
-        .phase-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 20px;
-            padding: 0 30px 30px;
-            background: #f8f9fa;
-        }
-        .phase-card {
-            background: white;
-            padding: 20px;
-            border-radius: 12px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        .phase-card h4 {
-            font-size: 16px;
-            margin-bottom: 15px;
-            color: #1e293b;
-        }
-        .progress-bar {
-            width: 100%;
-            height: 8px;
-            background: #e2e8f0;
-            border-radius: 4px;
-            overflow: hidden;
-            margin-bottom: 10px;
-        }
-        .progress-fill {
-            height: 100%;
-            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
-            transition: width 0.3s ease;
-        }
-        .phase-stats {
-            display: flex;
-            justify-content: space-between;
-            font-size: 14px;
-            color: #64748b;
-        }
-        
-        .task-section {
-            padding: 30px;
-        }
-        .task-section h2 {
-            font-size: 24px;
-            margin-bottom: 20px;
-            color: #1e293b;
-        }
-        .filters {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 20px;
-            flex-wrap: wrap;
-        }
-        .filter-btn {
-            padding: 8px 16px;
-            border: 2px solid #e2e8f0;
-            background: white;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 14px;
-            transition: all 0.2s;
-        }
-        .filter-btn:hover {
-            border-color: #667eea;
-            color: #667eea;
-        }
-        .filter-btn.active {
-            background: #667eea;
-            color: white;
-            border-color: #667eea;
-        }
-        
-        .task-table {
-            width: 100%;
-            border-collapse: collapse;
-            background: white;
-            border-radius: 12px;
-            overflow: hidden;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        }
-        .task-table thead {
-            background: #f8f9fa;
-        }
-        .task-table th {
-            padding: 15px;
-            text-align: left;
-            font-weight: 600;
-            color: #475569;
-            font-size: 13px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-        .task-table td {
-            padding: 15px;
-            border-top: 1px solid #e2e8f0;
-            font-size: 14px;
-        }
-        .task-table tr:hover {
-            background: #f8f9fa;
-        }
-        
-        .task-id {
-            font-family: 'Courier New', monospace;
-            font-weight: 600;
-            color: #667eea;
-        }
-        .priority-critical {
-            background: #fee2e2;
-            color: #991b1b;
-            padding: 4px 10px;
-            border-radius: 12px;
-            font-size: 12px;
-            font-weight: 600;
-        }
-        .priority-high {
-            background: #fed7aa;
-            color: #9a3412;
-            padding: 4px 10px;
-            border-radius: 12px;
-            font-size: 12px;
-            font-weight: 600;
-        }
-        .priority-medium {
-            background: #fef3c7;
-            color: #92400e;
-            padding: 4px 10px;
-            border-radius: 12px;
-            font-size: 12px;
-            font-weight: 600;
-        }
-        .priority-low {
-            background: #e0e7ff;
-            color: #3730a3;
-            padding: 4px 10px;
-            border-radius: 12px;
-            font-size: 12px;
-            font-weight: 600;
-        }
-        
-        .status-pending {
-            background: #cbd5e1;
-            color: #334155;
-            padding: 4px 12px;
-            border-radius: 12px;
-            font-size: 12px;
-            font-weight: 600;
-        }
-        .status-in-progress {
-            background: #bfdbfe;
-            color: #1e40af;
-            padding: 4px 12px;
-            border-radius: 12px;
-            font-size: 12px;
-            font-weight: 600;
-            animation: pulse 2s infinite;
-        }
-        .status-completed {
-            background: #bbf7d0;
-            color: #166534;
-            padding: 4px 12px;
-            border-radius: 12px;
-            font-size: 12px;
-            font-weight: 600;
-        }
-        .status-blocked {
-            background: #fecaca;
-            color: #991b1b;
-            padding: 4px 12px;
-            border-radius: 12px;
-            font-size: 12px;
-            font-weight: 600;
-        }
-        
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.6; }
-        }
-        
-        .dependencies {
-            font-size: 12px;
-            color: #64748b;
-        }
-        .dependency-tag {
-            background: #f1f5f9;
-            padding: 2px 8px;
-            border-radius: 4px;
-            margin-right: 4px;
-            display: inline-block;
-        }
-        
-        .footer {
-            padding: 30px;
-            background: #f8f9fa;
-            text-align: center;
-            color: #64748b;
-            font-size: 14px;
-        }
-        
-        @media (max-width: 768px) {
-            .metrics-grid, .phase-grid {
-                grid-template-columns: 1fr;
-            }
-            .task-table {
-                font-size: 12px;
-            }
-            .task-table th, .task-table td {
-                padding: 10px;
-            }
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <!-- Header -->
-        <div class="header">
-            <h1>🏗️ {PROJECT_NAME} Refactoring Progress</h1>
-            <div class="meta">
-                Generated: {TIMESTAMP} | 
-                Last Updated: {LAST_UPDATE} | 
-                Code Review: <a href="../code-review-reports/{REPORT_FILE}">{REPORT_FILE}</a>
-            </div>
-        </div>
-        
-        <!-- Key Metrics -->
-        <div class="metrics-grid">
-            <div class="metric-card">
-                <h3>📊 Overall Progress</h3>
-                <div class="metric-value" style="color: #667eea;">{COMPLETION_PCT}%</div>
-                <div class="metric-label">{COMPLETED_TASKS} of {TOTAL_TASKS} tasks completed</div>
-            </div>
-            
-            <div class="metric-card">
-                <h3>⚡ Current Velocity</h3>
-                <div class="metric-value" style="color: #10b981;">{VELOCITY}</div>
-                <div class="metric-label">tasks completed per day</div>
-            </div>
-            
-            <div class="metric-card">
-                <h3>🔥 Critical Tasks</h3>
-                <div class="metric-value" style="color: #ef4444;">{CRITICAL_TASKS}</div>
-                <div class="metric-label">{CRITICAL_PENDING} critical tasks pending</div>
-            </div>
-            
-            <div class="metric-card">
-                <h3>📅 Estimated Completion</h3>
-                <div class="metric-value" style="font-size: 32px; color: #8b5cf6;">{ETA_DATE}</div>
-                <div class="metric-label">Based on current velocity ({REMAINING_DAYS} days remaining)</div>
-            </div>
-        </div>
-        
-        <!-- Phase Progress -->
-        <div class="phase-grid">
-            <div class="phase-card">
-                <h4>🔒 Phase 1: Security & Critical</h4>
-                <div class="progress-bar">
-                    <div class="progress-fill" style="width: {PHASE1_PCT}%;"></div>
-                </div>
-                <div class="phase-stats">
-                    <span>{PHASE1_DONE} / {PHASE1_TOTAL}</span>
-                    <span>{PHASE1_PCT}%</span>
-                </div>
-            </div>
-            
-            <div class="phase-card">
-                <h4>⚡ Phase 2: Performance</h4>
-                <div class="progress-bar">
-                    <div class="progress-fill" style="width: {PHASE2_PCT}%;"></div>
-                </div>
-                <div class="phase-stats">
-                    <span>{PHASE2_DONE} / {PHASE2_TOTAL}</span>
-                    <span>{PHASE2_PCT}%</span>
-                </div>
-            </div>
-            
-            <div class="phase-card">
-                <h4>🏗️ Phase 3: Architecture</h4>
-                <div class="progress-bar">
-                    <div class="progress-fill" style="width: {PHASE3_PCT}%;"></div>
-                </div>
-                <div class="phase-stats">
-                    <span>{PHASE3_DONE} / {PHASE3_TOTAL}</span>
-                    <span>{PHASE3_PCT}%</span>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Task List -->
-        <div class="task-section">
-            <h2>📋 All Tasks</h2>
-            
-            <div class="filters">
-                <button class="filter-btn active" onclick="filterTasks('all')">All Tasks</button>
-                <button class="filter-btn" onclick="filterTasks('critical')">Critical</button>
-                <button class="filter-btn" onclick="filterTasks('high')">High Priority</button>
-                <button class="filter-btn" onclick="filterTasks('pending')">Pending</button>
-                <button class="filter-btn" onclick="filterTasks('in-progress')">In Progress</button>
-                <button class="filter-btn" onclick="filterTasks('completed')">Completed</button>
-                <button class="filter-btn" onclick="filterTasks('phase-1')">Phase 1</button>
-                <button class="filter-btn" onclick="filterTasks('phase-2')">Phase 2</button>
-                <button class="filter-btn" onclick="filterTasks('phase-3')">Phase 3</button>
-            </div>
-            
-            <table class="task-table">
-                <thead>
-                    <tr>
-                        <th>Task ID</th>
-                        <th style="width: 30%;">Title</th>
-                        <th>Priority</th>
-                        <th>Status</th>
-                        <th>Phase</th>
-                        <th>Effort</th>
-                        <th>Dependencies</th>
-                        <th>Branch</th>
-                    </tr>
-                </thead>
-                <tbody id="task-tbody">
-                    {TASK_ROWS}
-                </tbody>
-            </table>
-        </div>
-        
-        <!-- Footer -->
-        <div class="footer">
-            <p>Dashboard generated by Task Package Generator Agent</p>
-            <p>For task execution guide, see: <a href="../task-guides/refactoring-guide-{TIMESTAMP}.md">refactoring-guide-{TIMESTAMP}.md</a></p>
-        </div>
-    </div>
-    
-    <script>
-        // Task filtering functionality
-        const allTasks = {TASK_DATA_JSON};
-        
-        function filterTasks(filter) {
-            const tbody = document.getElementById('task-tbody');
-            const buttons = document.querySelectorAll('.filter-btn');
-            
-            // Update active button
-            buttons.forEach(btn => btn.classList.remove('active'));
-            event.target.classList.add('active');
-            
-            // Filter tasks
-            let filtered = allTasks;
-            if (filter !== 'all') {
-                filtered = allTasks.filter(task => {
-                    if (filter === 'critical' || filter === 'high' || filter === 'medium' || filter === 'low') {
-                        return task.priority === filter;
-                    }
-                    if (filter === 'pending' || filter === 'in-progress' || filter === 'completed' || filter === 'blocked') {
-                        return task.status === filter;
-                    }
-                    if (filter.startsWith('phase-')) {
-                        return task.phase === filter;
-                    }
-                    return true;
-                });
-            }
-            
-            // Render filtered tasks
-            tbody.innerHTML = filtered.map(task => `
-                <tr>
-                    <td><span class="task-id">${task.task_id}</span></td>
-                    <td>${task.title}</td>
-                    <td><span class="priority-${task.priority}">${task.priority.toUpperCase()}</span></td>
-                    <td><span class="status-${task.status}">${task.status.replace('-', ' ').toUpperCase()}</span></td>
-                    <td>${task.phase}</td>
-                    <td>${task.effort} days</td>
-                    <td class="dependencies">${task.dependencies === 'none' ? '-' : task.dependencies.split(',').map(d => `<span class="dependency-tag">${d}</span>`).join('')}</td>
-                    <td style="font-size: 12px; color: #667eea;">${task.branch_name}</td>
-                </tr>
-            `).join('');
-        }
-        
-        // Auto-refresh every 5 minutes
-        setTimeout(() => location.reload(), 300000);
-    </script>
-</body>
-</html>
-```
 
 ## Execution Instructions
 
