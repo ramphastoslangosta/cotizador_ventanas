@@ -171,3 +171,20 @@
 - Commit: 5b5e86f
 - Notes: Migration created but not applied to database yet (will be applied during deployment phase)
 - Issues: None
+
+### Step 5: Add MaterialOnlyItem Model
+- Started: $(date +%H:%M)
+- Completed: $(date +%H:%M)
+- Duration: ~15 minutes
+- Files Modified:
+  * models/quote_models.py (MODIFIED - added MaterialOnlyItem, MaterialCalculation, updated QuoteRequest and QuoteCalculation)
+- Changes:
+  * Added MaterialOnlyItem model with quantity validation (1-10000 range)
+  * Added MaterialCalculation model for quote response
+  * Updated QuoteRequest to include material_items field (default empty list)
+  * Updated QuoteCalculation to include material_only_items field
+  * Added root_validator to require at least one item (window or material)
+  * Maximum total items validation: 100 items
+- Test Result: ✅ Passed (4/4 validation checks)
+- Commit: 4c99a07
+- Issues: None
