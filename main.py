@@ -424,6 +424,8 @@ from models.quote_models import (
     WindowItem,
     WindowCalculation,
     QuoteCalculation,
+    MaterialOnlyItem,
+    MaterialCalculation,
 )
 
 # === FUNCIONES AUXILIARES ===
@@ -614,12 +616,40 @@ def calculate_window_item_from_bom(item: WindowItem, product_bom_service: Produc
         hardware_cost=total_hardware_cost
     )
 
+def calculate_material_only_item(
+    material_item: MaterialOnlyItem,
+    product_bom_service: ProductBOMServiceDB
+) -> MaterialCalculation:
+    """
+    Calculate cost for standalone material item
+    Used for: replacement glass, extra profiles, direct material sales
+    """
+    material = product_bom_service.get_material(material_item.material_id)
+    if not material:
+        raise ValueError(f"Material with ID {material_item.material_id} not found")
+
+    # Simple cost calculation: quantity × cost_per_unit
+    total_cost = material.cost_per_unit * material_item.quantity
+
+    return MaterialCalculation(
+        material_id=material.id,
+        material_name=material.name,
+        material_code=material.code,
+        material_category=material.category,
+        quantity=material_item.quantity,
+        unit=material.unit,
+        cost_per_unit=material.cost_per_unit,
+        total_cost=round_currency(total_cost),
+        description=material_item.description or material.description
+    )
+
 def calculate_complete_quote(quote_request: QuoteRequest, db: Session) -> QuoteCalculation:
-    """Calcula cotización completa usando base de datos"""
+    """Calcula cotización completa usando base de datos - UPDATED for material_items"""
     
     product_bom_service = ProductBOMServiceDB(db)
-    
+
     calculated_items = []
+    calculated_material_items = []  # NEW
     materials_subtotal = Decimal('0')
     labor_subtotal = Decimal('0')
 
@@ -629,15 +659,22 @@ def calculate_complete_quote(quote_request: QuoteRequest, db: Session) -> QuoteC
     current_tax_rate = quote_request.tax_rate if quote_request.tax_rate is not None else Decimal(str(settings.default_tax_rate))
     current_labor_rate_per_m2_override = quote_request.labor_rate_per_m2_override
 
+    # Calculate window/product items (existing logic)
     for item in quote_request.items:
         window_calc = calculate_window_item_from_bom(item, product_bom_service, global_labor_rate_per_m2_override=current_labor_rate_per_m2_override)
         calculated_items.append(window_calc)
-        
-        materials_subtotal += (window_calc.total_profiles_cost + 
-                               window_calc.total_glass_cost + 
-                               window_calc.total_hardware_cost + 
+
+        materials_subtotal += (window_calc.total_profiles_cost +
+                               window_calc.total_glass_cost +
+                               window_calc.total_hardware_cost +
                                window_calc.total_consumables_cost)
         labor_subtotal += window_calc.labor_cost
+
+    # NEW: Calculate material-only items
+    for material_item in quote_request.material_items:
+        material_calc = calculate_material_only_item(material_item, product_bom_service)
+        calculated_material_items.append(material_calc)
+        materials_subtotal += material_calc.total_cost
     
     subtotal_before_overhead = materials_subtotal + labor_subtotal
     
@@ -651,6 +688,7 @@ def calculate_complete_quote(quote_request: QuoteRequest, db: Session) -> QuoteC
     result = QuoteCalculation(
         client=quote_request.client,
         items=calculated_items,
+        material_only_items=calculated_material_items,  # NEW
         materials_subtotal=round_currency(materials_subtotal),
         labor_subtotal=round_currency(labor_subtotal),
         subtotal_before_overhead=round_currency(subtotal_before_overhead),
