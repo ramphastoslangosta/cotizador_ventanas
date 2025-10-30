@@ -123,3 +123,18 @@
 - Test Result: ✅ Passed (all 3 validation checks)
 - Commit: 02a2b89
 - Issues: None
+
+### Step 2: Update AppProduct Pydantic Model
+- Started: $(date +%H:%M)
+- Completed: $(date +%H:%M)
+- Duration: ~10 minutes
+- Files Modified:
+  * models/product_bom_models.py (MODIFIED - added imports, updated AppProduct class, added root_validator)
+- Changes:
+  * Added product_category field (required)
+  * Made window_type Optional (validated for WINDOW category)
+  * Added door_type Optional field (validated for DOOR/LOUVER_DOOR)
+  * Added root_validator for category-specific validation
+- Test Result: ✅ Passed (all 4 validation checks)
+- Commit: b8d3f76
+- Issues: None
