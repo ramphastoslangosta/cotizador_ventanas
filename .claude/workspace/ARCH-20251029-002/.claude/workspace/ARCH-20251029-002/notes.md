@@ -152,3 +152,22 @@
 - Test Result: ✅ Passed (2/2 validation checks)
 - Commit: c901891
 - Issues: None
+
+### Step 4: Create Alembic Migration
+- Started: $(date +%H:%M)
+- Completed: $(date +%H:%M)
+- Duration: ~15 minutes
+- Files Created:
+  * alembic/versions/005_add_product_categories.py (Alembic migration)
+  * alembic/versions/005_add_product_categories.sql (Manual SQL preview)
+- Changes:
+  * Adds product_category column (NOT NULL, default='window')
+  * Makes window_type nullable
+  * Adds door_type column (nullable)
+  * Adds 3 check constraints (category values, window_type for windows, door_type for doors)
+  * Adds index on product_category for performance
+  * Includes upgrade() and downgrade() functions
+- Test Result: ✅ Migration syntax validated
+- Commit: 5b5e86f
+- Notes: Migration created but not applied to database yet (will be applied during deployment phase)
+- Issues: None
