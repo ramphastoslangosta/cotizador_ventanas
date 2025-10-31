@@ -1,7 +1,7 @@
 version: '3.8'
 
 # Docker Compose for TEST environment
-# Port 8001 for parallel testing
+# Port 8001 for parallel testing with ISOLATED database
 
 services:
   app:
@@ -12,18 +12,121 @@ services:
     ports:
       - "8001:8000"
     environment:
-      - DATABASE_URL=${DATABASE_URL}
+      - DATABASE_URL=postgresql://${DB_USER:-ventanas_user}:${DB_PASSWORD:-secure_password_change_me}@postgres-test:5432/ventanas_test_db
       - SECRET_KEY=${SECRET_KEY}
       - DEBUG=true
+      - SESSION_EXPIRE_HOURS=${SESSION_EXPIRE_HOURS:-8}
+      - REDIS_URL=redis://redis-test:6379
     env_file:
       - .env
+    depends_on:
+      - postgres-test
+      - redis-test
     volumes:
       - ./static/uploads:/app/static/uploads
       - ./logs:/app/logs
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 768M
+          cpus: '0.8'
+        reservations:
+          memory: 512M
+          cpus: '0.5'
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
       interval: 30s
       timeout: 15s
       retries: 3
       start_period: 90s
+    networks:
+      - ventanas-test-network
+
+  # TEST PostgreSQL Database - Completely isolated from production
+  postgres-test:
+    image: postgres:15-alpine
+    container_name: ventanas-test-db
+    environment:
+      POSTGRES_DB: ventanas_test_db
+      POSTGRES_USER: ${DB_USER:-ventanas_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-secure_password_change_me}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=es_MX.UTF-8"
+    volumes:
+      - postgres_test_data:/var/lib/postgresql/data
+      - ./backups:/backups
+    ports:
+      - "5433:5432"  # Different port to avoid conflicts with production
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+        reservations:
+          memory: 256M
+          cpus: '0.3'
+    command: >
+      postgres
+      -c shared_buffers=128MB
+      -c effective_cache_size=256MB
+      -c maintenance_work_mem=32MB
+      -c checkpoint_completion_target=0.9
+      -c wal_buffers=16MB
+      -c default_statistics_target=100
+      -c random_page_cost=1.1
+      -c effective_io_concurrency=200
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-ventanas_user} -d ventanas_test_db"]
+      interval: 30s
+      timeout: 15s
+      retries: 5
+    networks:
+      - ventanas-test-network
+
+  # TEST Redis - Isolated from production
+  redis-test:
+    image: redis:7-alpine
+    container_name: ventanas-test-redis
+    volumes:
+      - redis_test_data:/data
+    ports:
+      - "6380:6379"  # Different port to avoid conflicts
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: '0.2'
+        reservations:
+          memory: 64M
+          cpus: '0.1'
+    command: >
+      redis-server
+      --maxmemory 96mb
+      --maxmemory-policy allkeys-lru
+      --save 900 1
+      --save 300 10
+      --save 60 10000
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - ventanas-test-network
+
+# Isolated volumes for test environment
+volumes:
+  postgres_test_data:
+    driver: local
+  redis_test_data:
+    driver: local
+
+# Isolated network for test environment
+networks:
+  ventanas-test-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.21.0.0/16  # Different subnet from production (172.20.0.0/16)
