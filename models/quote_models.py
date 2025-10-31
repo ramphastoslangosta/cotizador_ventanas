@@ -136,6 +136,25 @@ class WindowItem(BaseModel):
             raise ValueError('Las dimensiones máximas son 500cm')
         return v
 
+class MaterialOnlyItem(BaseModel):
+    """
+    Direct material quotation (not part of a product BOM)
+    Used for: replacement glass, extra profiles, standalone hardware
+    Example: 77 pieces of 6mm tempered glass for DPTOS DZITYÁ project
+    """
+    material_id: int = Field(..., description="Database ID of material")
+    quantity: Decimal = Field(..., gt=0, description="Quantity in material's native unit")
+    description: Optional[str] = Field(None, max_length=200, description="Custom description")
+
+    @validator('quantity')
+    def validate_quantity(cls, v):
+        """Validate quantity is positive and reasonable"""
+        if v <= 0:
+            raise ValueError('Quantity must be greater than 0')
+        if v > 10000:
+            raise ValueError('Quantity exceeds maximum (10000)')
+        return v
+
 class Client(BaseModel):
     """Modelo para cliente"""
     name: str = Field(..., min_length=1, max_length=100)
@@ -146,7 +165,8 @@ class Client(BaseModel):
 class QuoteRequest(BaseModel):
     """Modelo para solicitud de cotización"""
     client: Client
-    items: List[WindowItem] = Field(..., min_items=1, max_items=50)
+    items: List[WindowItem] = Field(default_factory=list, max_items=50)
+    material_items: List[MaterialOnlyItem] = Field(default_factory=list, max_items=50, description="Standalone material items")
     notes: Optional[str] = None
     # START: Added fields for modifiable overhead variables and labor override
     profit_margin: Optional[Decimal] = Field(None, ge=0, le=1, description="Margen de utilidad para esta cotización (0.0 a 1.0)")
@@ -154,12 +174,21 @@ class QuoteRequest(BaseModel):
     tax_rate: Optional[Decimal] = Field(None, ge=0, le=1, description="Tasa de impuestos para esta cotización (0.0 a 1.0)")
     labor_rate_per_m2_override: Optional[Decimal] = Field(None, gt=0, description="Costo de mano de obra por m2 para esta cotización (opcional, anula el cálculo por tipo de ventana)")
     # END: Added fields
-    
-    @validator('items')
-    def validate_items(cls, v):
-        if len(v) == 0:
-            raise ValueError('Debe incluir al menos un ítem')
-        return v
+
+    @root_validator(skip_on_failure=True)
+    def validate_at_least_one_item(cls, values):
+        """Ensure quote has at least one item (window or material)"""
+        items = values.get('items', [])
+        material_items = values.get('material_items', [])
+
+        if len(items) == 0 and len(material_items) == 0:
+            raise ValueError('Quote must have at least one item (window or material)')
+
+        total_items = len(items) + len(material_items)
+        if total_items > 100:
+            raise ValueError(f'Total items ({total_items}) exceeds maximum (100)')
+
+        return values
 
 # Modelos para responses de cálculos
 class WindowCalculation(BaseModel):
@@ -202,12 +231,25 @@ class WindowCalculation(BaseModel):
     
     # Subtotal por ítem
     subtotal: Decimal = Field(..., description="Subtotal antes de gastos generales.")
-    
+
+class MaterialCalculation(BaseModel):
+    """Result of material-only item calculation"""
+    material_id: int
+    material_name: str
+    material_code: Optional[str]
+    material_category: str
+    quantity: Decimal
+    unit: str  # ML, M2, PZA, etc.
+    cost_per_unit: Decimal
+    total_cost: Decimal
+    description: Optional[str] = None
+
 class QuoteCalculation(BaseModel):
     """Resultado completo del cálculo de cotización"""
     quote_id: Optional[int] = None
     client: Client
     items: List[WindowCalculation]
+    material_only_items: List[MaterialCalculation] = Field(default_factory=list, description="Standalone material calculations")
     
     # Totales
     materials_subtotal: Decimal = Field(..., description="Subtotal de materiales (perfiles + vidrio + herrajes + consumibles)")

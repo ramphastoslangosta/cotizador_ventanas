@@ -78,8 +78,17 @@ class AppProduct(Base):
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     name = Column(Text, nullable=False)
     code = Column(Text, nullable=True, unique=True)  # Código estándar del producto (ej: WIN-COR-3H-001)
-    window_type = Column(Text, nullable=False)  # fija, corrediza, proyectante, etc.
-    aluminum_line = Column(Text, nullable=False)  # nacional_serie_3, nacional_serie_35, etc.
+
+    # NEW: Product category column
+    product_category = Column(Text, nullable=False, default='window')
+
+    # MODIFIED: Make nullable for non-window products
+    window_type = Column(Text, nullable=True)
+
+    # NEW: Door type column
+    door_type = Column(Text, nullable=True)
+
+    aluminum_line = Column(Text, nullable=False)
     min_width_cm = Column(Numeric(precision=8, scale=2), nullable=False)
     max_width_cm = Column(Numeric(precision=8, scale=2), nullable=False)
     min_height_cm = Column(Numeric(precision=8, scale=2), nullable=False)
@@ -341,20 +350,24 @@ class DatabaseProductService:
             AppProduct.is_active == True
         ).first()
     
-    def create_product(self, name: str, window_type: str, aluminum_line: str,
-                      min_width_cm: Decimal, max_width_cm: Decimal,
-                      min_height_cm: Decimal, max_height_cm: Decimal,
-                      bom: list, description: Optional[str] = None, code: Optional[str] = None) -> AppProduct:
+    def create_product(self, name: str, product_category: str, window_type: Optional[str] = None,
+                      door_type: Optional[str] = None, aluminum_line: Optional[str] = None,
+                      min_width_cm: Decimal = None, max_width_cm: Decimal = None,
+                      min_height_cm: Decimal = None, max_height_cm: Decimal = None,
+                      bom: list = None, description: Optional[str] = None, code: Optional[str] = None) -> AppProduct:
+        """Create product - UPDATED for product_category"""
         product = AppProduct(
             name=name,
             code=code,
-            window_type=window_type,
+            product_category=product_category,  # NEW
+            window_type=window_type,  # MODIFIED: Optional
+            door_type=door_type,  # NEW
             aluminum_line=aluminum_line,
             min_width_cm=min_width_cm,
             max_width_cm=max_width_cm,
             min_height_cm=min_height_cm,
             max_height_cm=max_height_cm,
-            bom=bom,
+            bom=bom if bom is not None else [],
             description=description
         )
         self.db.add(product)

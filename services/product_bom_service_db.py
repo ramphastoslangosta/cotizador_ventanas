@@ -102,14 +102,16 @@ class ProductBOMServiceDB:
         return self._db_product_to_pydantic(db_product)
     
     def create_product(self, product: AppProduct) -> AppProduct:
-        """Crea un nuevo producto en la base de datos"""
+        """Crea un nuevo producto en la base de datos - UPDATED for product_category"""
         # Convertir BOM a formato JSON para la base de datos
         bom_json = [item.model_dump(mode='json') for item in product.bom]
-        
+
         db_product = self.product_service.create_product(
             name=product.name,
-            window_type=product.window_type.value,
-            aluminum_line=product.aluminum_line.value,
+            product_category=product.product_category.value,  # NEW
+            window_type=product.window_type.value if product.window_type else None,  # MODIFIED: Optional
+            door_type=product.door_type.value if product.door_type else None,  # NEW
+            aluminum_line=product.aluminum_line.value if product.aluminum_line else None,
             min_width_cm=product.min_width_cm,
             max_width_cm=product.max_width_cm,
             min_height_cm=product.min_height_cm,
@@ -121,15 +123,17 @@ class ProductBOMServiceDB:
         return self._db_product_to_pydantic(db_product)
     
     def update_product(self, product_id: int, updated_product: AppProduct) -> Optional[AppProduct]:
-        """Actualiza un producto existente"""
+        """Actualiza un producto existente - UPDATED for product_category"""
         # Convertir BOM a formato JSON
         bom_json = [item.model_dump(mode='json') for item in updated_product.bom]
-        
+
         db_product = self.product_service.update_product(
             product_id=product_id,
             name=updated_product.name,
-            window_type=updated_product.window_type.value,
-            aluminum_line=updated_product.aluminum_line.value,
+            product_category=updated_product.product_category.value,  # NEW
+            window_type=updated_product.window_type.value if updated_product.window_type else None,  # MODIFIED
+            door_type=updated_product.door_type.value if updated_product.door_type else None,  # NEW
+            aluminum_line=updated_product.aluminum_line.value if updated_product.aluminum_line else None,
             min_width_cm=updated_product.min_width_cm,
             max_width_cm=updated_product.max_width_cm,
             min_height_cm=updated_product.min_height_cm,
@@ -360,7 +364,9 @@ class ProductBOMServiceDB:
         )
     
     def _db_product_to_pydantic(self, db_product: DBAppProduct) -> AppProduct:
-        """Convierte un modelo de producto de base de datos a Pydantic"""
+        """Convierte un modelo de producto de base de datos a Pydantic - UPDATED for product_category"""
+        from models.product_categories import ProductCategory, DoorType
+
         # Convertir BOM de JSON a objetos Pydantic
         bom_items = []
         for bom_data in db_product.bom:
@@ -372,13 +378,15 @@ class ProductBOMServiceDB:
                 description=bom_data.get('description')
             )
             bom_items.append(bom_item)
-        
+
         return AppProduct(
             id=db_product.id,
             name=db_product.name,
             code=getattr(db_product, 'code', None),
-            window_type=WindowType(db_product.window_type),
-            aluminum_line=AluminumLine(db_product.aluminum_line),
+            product_category=ProductCategory(db_product.product_category),  # NEW
+            window_type=WindowType(db_product.window_type) if db_product.window_type else None,  # MODIFIED: Optional
+            door_type=DoorType(db_product.door_type) if db_product.door_type else None,  # NEW
+            aluminum_line=AluminumLine(db_product.aluminum_line) if db_product.aluminum_line else None,
             min_width_cm=db_product.min_width_cm,
             max_width_cm=db_product.max_width_cm,
             min_height_cm=db_product.min_height_cm,
@@ -616,8 +624,11 @@ def initialize_sample_data(db: Session):
         BOMItem(material_id=created_consumables["Cuñas de Hule"].id, material_type=MaterialType.CONSUMIBLE, quantity_formula="8", description="Cuñas de hule (4 por paño × 2)"),
     ]
     
+    from models.product_categories import ProductCategory
+
     corrediza_product = AppProduct(
         name="Ventana Corrediza 2 Hojas con Vidrio (Línea 3\")",
+        product_category=ProductCategory.WINDOW,  # NEW
         window_type=WindowType.CORREDIZA,
         aluminum_line=AluminumLine.SERIE_3,
         min_width_cm=Decimal('80'), max_width_cm=Decimal('300'),
@@ -643,6 +654,7 @@ def initialize_sample_data(db: Session):
     
     fija_product = AppProduct(
         name="Ventana Fija con Vidrio Templado (Línea 3\")",
+        product_category=ProductCategory.WINDOW,  # NEW
         window_type=WindowType.FIJA,
         aluminum_line=AluminumLine.SERIE_3,
         min_width_cm=Decimal('50'), max_width_cm=Decimal('200'),
@@ -671,6 +683,7 @@ def initialize_sample_data(db: Session):
     
     proyectante_product = AppProduct(
         name="Ventana Proyectante con Vidrio Laminado (Serie 35)",
+        product_category=ProductCategory.WINDOW,  # NEW
         window_type=WindowType.PROYECTANTE,
         aluminum_line=AluminumLine.SERIE_35,
         min_width_cm=Decimal('40'), max_width_cm=Decimal('120'),

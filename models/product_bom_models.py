@@ -1,11 +1,12 @@
 # models/product_bom_models.py
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, root_validator
 from typing import List, Optional
 from decimal import Decimal
 from enum import Enum
 
 # IMPORTAR ENUMS DE quote_models.py AQUI, FUERA DE CUALQUIER CLASE
 from .quote_models import WindowType, AluminumLine, GlassType
+from .product_categories import ProductCategory, DoorType
 
 class MaterialUnit(str, Enum):
     ML = "ML" # Metro Lineal
@@ -48,12 +49,16 @@ class AppProduct(BaseModel):
     id: Optional[int] = None # ID es opcional para la creación
     name: str = Field(..., min_length=1, max_length=100)
     code: Optional[str] = Field(None, max_length=50, description="Código estándar del producto (ej: WIN-COR-3H-001)")
-    
-    # Estos campos definen el "tipo" de producto y sus características base
-    window_type: WindowType # Ej. CORREDIZA, FIJA, PROYECTANTE
-    aluminum_line: AluminumLine # Ej. SERIE_3, SERIE_35
+
+    # NEW: Category-based flexible system
+    product_category: ProductCategory = Field(..., description="Product category")
+
+    # MODIFIED: Make these optional (only used when applicable)
+    window_type: Optional[WindowType] = Field(None, description="Window type (required if category=WINDOW)")
+    door_type: Optional[DoorType] = Field(None, description="Door type (required if category=DOOR/LOUVER_DOOR)")
+    aluminum_line: Optional[AluminumLine] = None
     # glass_type ya NO va aquí, se selecciona en la cotización
-    
+
     # Nuevos: Rangos de dimensiones permitidas para este tipo de producto
     min_width_cm: Decimal = Field(..., gt=0, description="Ancho mínimo permitido en cm.")
     max_width_cm: Decimal = Field(..., gt=0, description="Ancho máximo permitido en cm.")
@@ -62,5 +67,27 @@ class AppProduct(BaseModel):
 
     # El BOM es el corazón de este modelo, ahora con fórmulas
     bom: List[BOMItem] = Field(default_factory=list, description="Lista de materiales y fórmulas de cantidad necesarias para este producto.")
-    
+
     description: Optional[str] = None # Descripción del producto (ej. "Sistema de ventana corrediza de 2 hojas")
+
+    @root_validator(skip_on_failure=True)
+    def validate_category_specific_fields(cls, values):
+        """Ensure category-specific fields are provided when required"""
+        category = values.get('product_category')
+        window_type = values.get('window_type')
+        door_type = values.get('door_type')
+
+        # Window products must have window_type
+        if category == ProductCategory.WINDOW and window_type is None:
+            raise ValueError('window_type is required when product_category is WINDOW')
+
+        # Door products must have door_type
+        if category in [ProductCategory.DOOR, ProductCategory.LOUVER_DOOR] and door_type is None:
+            raise ValueError('door_type is required for door category products')
+
+        # Standalone materials should not have window/door types
+        if category == ProductCategory.STANDALONE_MATERIAL:
+            if window_type is not None or door_type is not None:
+                raise ValueError('Standalone materials cannot have window_type or door_type')
+
+        return values
