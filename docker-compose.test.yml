@@ -17,8 +17,7 @@ services:
       - DEBUG=true
       - SESSION_EXPIRE_HOURS=${SESSION_EXPIRE_HOURS:-8}
       - REDIS_URL=redis://redis-test:6379
-    env_file:
-      - .env
+    # NOTE: Do NOT use env_file for test - it overrides DATABASE_URL with production values
     depends_on:
       - postgres-test
       - redis-test
