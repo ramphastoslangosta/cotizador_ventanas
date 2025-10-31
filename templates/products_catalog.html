@@ -113,19 +113,51 @@
                     <div class="row">
                         <div class="col-md-12 mb-3">
                             <label for="productDescription" class="form-label">Descripción (opcional)</label>
-                            <input type="text" class="form-control" id="productDescription" 
+                            <input type="text" class="form-control" id="productDescription"
                                    placeholder="Ej: Sistema corredizo estándar">
                         </div>
                     </div>
 
                     <div class="row">
-                        <div class="col-md-4 mb-3">
+                        <div class="col-md-6 mb-3">
+                            <label for="productCategory" class="form-label">Categoría del Producto *</label>
+                            <select class="form-select" id="productCategory" required>
+                                <option value="">Seleccionar categoría...</option>
+                                <option value="window">Ventana (Window)</option>
+                                <option value="door">Puerta (Door)</option>
+                                <option value="louver_door">Puerta de Louver (Louver Door)</option>
+                                <option value="railing">Baranda (Railing)</option>
+                                <option value="curtain_wall">Muro Cortina (Curtain Wall)</option>
+                                <option value="skylight">Tragaluz (Skylight)</option>
+                                <option value="canopy">Canopy</option>
+                                <option value="standalone_material">Material Independiente (Standalone Material)</option>
+                            </select>
+                            <div class="form-text">
+                                Selecciona el tipo de producto (ventana, puerta, baranda, etc.)
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-4 mb-3" id="windowTypeGroup" style="display:none;">
                             <label for="productWindowType" class="form-label">Tipo de Ventana *</label>
-                            <select class="form-select" id="productWindowType" required>
+                            <select class="form-select" id="productWindowType">
                                 <option value="">Seleccionar...</option>
                                 {% for wt in window_types %}
                                 <option value="{{ wt.value }}">{{ wt.label }}</option>
                                 {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-4 mb-3" id="doorTypeGroup" style="display:none;">
+                            <label for="productDoorType" class="form-label">Tipo de Puerta *</label>
+                            <select class="form-select" id="productDoorType">
+                                <option value="">Seleccionar...</option>
+                                <option value="single_leaf">Hoja Simple (Single Leaf)</option>
+                                <option value="double_leaf">Hoja Doble (Double Leaf)</option>
+                                <option value="sliding">Corrediza (Sliding)</option>
+                                <option value="swing">Abatible (Swing)</option>
+                                <option value="pivot">Pivote (Pivot)</option>
+                                <option value="folding">Plegable (Folding)</option>
                             </select>
                         </div>
                         <div class="col-md-4 mb-3">
@@ -436,6 +468,13 @@ function resetProductModal() {
     document.getElementById('productModalTitle').innerHTML = '<i class="fas fa-plus-circle"></i> Nuevo Producto';
     document.getElementById('bomItemsContainer').innerHTML = ''; // Limpiar BOM
     document.getElementById('productGlassType').value = ''; // Ensure this is reset
+
+    // Reset and hide conditional fields
+    document.getElementById('windowTypeGroup').style.display = 'none';
+    document.getElementById('doorTypeGroup').style.display = 'none';
+    document.getElementById('productWindowType').required = false;
+    document.getElementById('productDoorType').required = false;
+
     editingProductId = null;
     addBomItem(); // Añadir un item de BOM vacío por defecto
 }
@@ -478,13 +517,22 @@ function editProduct(id) {
     if (!product) return;
 
     editingProductId = id;
-    
+
     document.getElementById('productModalTitle').innerHTML = '<i class="fas fa-edit"></i> Editar Producto';
     document.getElementById('productId').value = product.id;
     document.getElementById('productName').value = product.name;
     document.getElementById('productCode').value = product.code || '';
     document.getElementById('productDescription').value = product.description || '';
-    document.getElementById('productWindowType').value = product.window_type;
+
+    // Set product category and trigger change event to show appropriate fields
+    const categorySelect = document.getElementById('productCategory');
+    categorySelect.value = product.product_category || 'window'; // Default to window for backwards compatibility
+    categorySelect.dispatchEvent(new Event('change')); // Trigger show/hide logic
+
+    // Set window type and door type (populated fields will be visible based on category)
+    document.getElementById('productWindowType').value = product.window_type || '';
+    document.getElementById('productDoorType').value = product.door_type || '';
+
     document.getElementById('productAluminumLine').value = product.aluminum_line;
     // productGlassType no se edita aquí, ya que se selecciona en la cotización
     document.getElementById('minWidthCm').value = product.min_width_cm;
@@ -528,11 +576,27 @@ async function saveProduct() {
         });
     });
 
+    const productCategory = document.getElementById('productCategory').value;
+    const windowType = document.getElementById('productWindowType').value;
+    const doorType = document.getElementById('productDoorType').value;
+
+    // Validate category-specific fields
+    if (productCategory === 'window' && !windowType) {
+        showAlert('El tipo de ventana es requerido para productos de categoría "Ventana"', 'danger');
+        return;
+    }
+    if ((productCategory === 'door' || productCategory === 'louver_door') && !doorType) {
+        showAlert('El tipo de puerta es requerido para productos de categoría "Puerta"', 'danger');
+        return;
+    }
+
     const productData = {
         name: document.getElementById('productName').value,
         code: document.getElementById('productCode').value || null,
         description: document.getElementById('productDescription').value || null,
-        window_type: document.getElementById('productWindowType').value,
+        product_category: productCategory,
+        window_type: windowType || null,
+        door_type: doorType || null,
         aluminum_line: document.getElementById('productAluminumLine').value,
         min_width_cm: parseFloat(document.getElementById('minWidthCm').value),
         max_width_cm: parseFloat(document.getElementById('maxWidthCm').value),
@@ -746,6 +810,47 @@ async function importProductsCsv() {
         importBtn.disabled = false;
     }
 }
+
+// Handle product category change to show/hide conditional fields
+document.addEventListener('DOMContentLoaded', function() {
+    const categorySelect = document.getElementById('productCategory');
+    const windowTypeGroup = document.getElementById('windowTypeGroup');
+    const doorTypeGroup = document.getElementById('doorTypeGroup');
+    const windowTypeSelect = document.getElementById('productWindowType');
+    const doorTypeSelect = document.getElementById('productDoorType');
+    const aluminumLineSelect = document.getElementById('productAluminumLine');
+
+    if (categorySelect) {
+        categorySelect.addEventListener('change', function() {
+            const category = this.value;
+
+            // Show/hide window type field
+            if (category === 'window') {
+                windowTypeGroup.style.display = 'block';
+                windowTypeSelect.required = true;
+            } else {
+                windowTypeGroup.style.display = 'none';
+                windowTypeSelect.required = false;
+                windowTypeSelect.value = '';
+            }
+
+            // Show/hide door type field
+            if (category === 'door' || category === 'louver_door') {
+                doorTypeGroup.style.display = 'block';
+                doorTypeSelect.required = true;
+            } else {
+                doorTypeGroup.style.display = 'none';
+                doorTypeSelect.required = false;
+                doorTypeSelect.value = '';
+            }
+
+            // Make aluminum line optional for non-window products
+            if (aluminumLineSelect) {
+                aluminumLineSelect.required = (category === 'window');
+            }
+        });
+    }
+});
 
 </script>
 {% endblock %}
